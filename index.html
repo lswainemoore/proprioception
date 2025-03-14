@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML5.js Handpose</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.min.js"></script>
+  <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    let video;
+    let handPose;
+    let hands = [];
+
+    function setup() {
+      createCanvas(640, 480);
+
+      // Create video and hide it
+      video = createCapture(VIDEO, { flipped: true });
+      video.size(640, 480);
+      video.hide();
+
+      // Initialize handpose
+      handPose = ml5.handPose({ flipped: true });
+      handPose.detectStart(video, gotHands);
+    }
+
+    function gotHands(results) {
+      // Save the output to the hands variable
+      hands = results;
+    }
+
+    function computeMetrics() {
+      const metrics = {
+        leftHandPinch: {
+          title: "Left Hand Pinch",
+          calced: false,
+        },
+        rightHandPinch: {
+          title: "Right Hand Pinch",
+          calced: false,
+        },
+        wrists: {
+          title: "Wrists",
+          calced: false
+        },
+      };
+
+      for (let i = 0; i < hands.length; i++) {
+        const hand = hands[i];
+        const thumbTip = hand?.thumb_tip;
+        const indexTip = hand?.index_finger_tip;
+
+        if (thumbTip && indexTip) {
+          if (hand.handedness === "Left") {
+            metrics.leftHandPinch.calced = true;
+            metrics.leftHandPinch.twoD = calculate2DDistance(thumbTip, indexTip);
+            metrics.leftHandPinch.threeD = calculate3DDistance(thumbTip, indexTip);
+          } else if (hand.handedness === "Right") {
+            metrics.rightHandPinch.calced = true;
+            metrics.rightHandPinch.twoD = calculate2DDistance(thumbTip, indexTip);
+            metrics.rightHandPinch.threeD = calculate3DDistance(thumbTip, indexTip);
+          }
+        }
+      }
+
+      // can't just do this, because 3d coordinates seem relevant to each hand
+      // see: https://github.com/google-ai-edge/mediapipe/issues/742
+      // if (hands && hands.length == 2) {
+      //   console.log({ hands })
+      //   const hand1 = hands[0];
+      //   const hand2 = hands[1];
+
+      //   const wrist1 = hand1?.wrist;
+      //   const wrist2 = hand2?.wrist;
+      //   if (wrist1 && wrist2) {
+      //     metrics.wrists.calced = true;
+      //     metrics.wrists.twoD = calculate2DDistance(wrist1, wrist2);
+      //     metrics.wrists.threeD = calculate3DDistance(wrist1, wrist2);
+      //   }
+      // }
+
+      return metrics;
+    }
+
+    function drawAllPoints() {
+      for (let i = 0; i < hands.length; i++) {
+        const hand = hands[i];
+        drawKeypoints(hand);
+        drawSkeleton(hand);
+      }
+    }
+
+    function drawAllMetrics(metrics) {
+      const metricStrs = [];
+      for (const key in metrics) {
+        const metric = metrics[key];
+        if (metric.calced) {
+          metricStrs.push(metric.title + ": " + Math.round(metric.twoD) + " (2D); " + Math.round(metric.threeD) + " (3D)");
+        } else {
+          metricStrs.push(metric.title + ": Not available");
+        }
+      }
+
+      drawDistanceBox(metricStrs);
+    }
+
+    function draw() {
+      image(video, 0, 0, width, height);
+
+      const metrics = computeMetrics();
+      drawAllMetrics(metrics);
+      drawAllPoints();
+    }
+
+    function drawKeypoints(hand) {
+      for (let j = 0; j < hand.keypoints.length; j++) {
+        let keypoint = hand.keypoints[j];
+        fill(0, 255, 0);
+        noStroke();
+        circle(keypoint.x, keypoint.y, 10);
+      }
+    }
+    function calculate2DDistance(point1, point2) {
+      const dx = point1.x - point2.x;
+      const dy = point1.y - point2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function calculate3DDistance(point1, point2) {
+      const dx = point1.x3D - point2.x3D;
+      const dy = point1.y3D - point2.y3D;
+      const dz = point1.z3D - point2.z3D;
+      return Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.;
+    }
+
+    function drawDistanceBox(distanceStrs) {
+      // Box parameters
+      const padding = 10;
+      const lineHeight = 24;
+      const boxWidth = 300;
+      const boxHeight = padding * 2 + lineHeight * distanceStrs.length;
+      const boxX = 20;
+      const boxY = 20;
+
+      // Draw box with semi-transparent background
+      push();
+      fill(0, 0, 0, 230);    // More opaque background
+      stroke(255, 255, 0);   // Yellow border
+      strokeWeight(3);       // Thicker border
+      rect(boxX, boxY, boxWidth, boxHeight, 10);  // Rounded corners
+
+      // Draw text
+      fill(255);             // White text
+      noStroke();
+      textSize(20);          // Text size
+      textAlign(LEFT, TOP);
+
+      // Show each distance string
+      for (let i = 0; i < distanceStrs.length; i++) {
+        text(distanceStrs[i], boxX + padding, boxY + padding + i * lineHeight);
+      }
+      pop();
+    }
+
+    function drawSkeleton(hand) {
+      // Define finger connections
+      const fingerConnections = [
+        // Thumb [connections]
+        [0, 1, 2, 3, 4],
+        // Index finger 
+        [0, 5, 6, 7, 8],
+        // Middle finger
+        [0, 9, 10, 11, 12],
+        // Ring finger
+        [0, 13, 14, 15, 16],
+        // Pinky
+        [0, 17, 18, 19, 20]
+      ];
+
+      // Define colors for each finger
+      const colors = [
+        [255, 0, 0],      // thumb (red)
+        [0, 255, 0],      // index (green)
+        [0, 0, 255],      // middle (blue)
+        [255, 255, 0],    // ring (yellow)
+        [255, 0, 255]     // pinky (magenta)
+      ];
+
+      // Draw each finger
+      for (let i = 0; i < fingerConnections.length; i++) {
+        const points = fingerConnections[i];
+        const color = colors[i];
+
+        stroke(color[0], color[1], color[2]);
+        strokeWeight(2);
+
+        // Draw lines connecting each point in the finger
+        for (let j = 0; j < points.length - 1; j++) {
+          const keypoint1 = hand.keypoints[points[j]];
+          const keypoint2 = hand.keypoints[points[j + 1]];
+
+          if (keypoint1 && keypoint2) {
+            line(keypoint1.x, keypoint1.y, keypoint2.x, keypoint2.y);
+          }
+        }
+      }
+    }
+  </script>
+</body>
+
+</html>
