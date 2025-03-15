@@ -38,6 +38,8 @@
       playing: false,
       level: 1,
       ended: false,
+      countdown: false,
+      countdownStartTime: 0,
     };
 
     let levels = {
@@ -313,6 +315,21 @@
         textSize(32);
         textAlign(CENTER, CENTER);
         text("Game Over", width / 2, height / 2);
+      } else if (gameState.countdown) {
+        // Handle countdown
+        const elapsedTime = millis() - gameState.countdownStartTime;
+        const countdownSeconds = 3 - Math.floor(elapsedTime / 1000);
+        
+        if (countdownSeconds <= 0) {
+          // Countdown finished, start level
+          gameState.countdown = false;
+          startLevel();
+        } else {
+          fill(255);
+          textSize(32);
+          textAlign(CENTER, CENTER);
+          text("Level " + gameState.level + " starting in " + countdownSeconds, width / 2, height / 2);
+        }
       } else if (!gameState.playing) {
         fill(255);
         textSize(32);
@@ -492,6 +509,8 @@
       gameState.started = false;
       gameState.level = 1;
       gameState.ended = false;
+      gameState.countdown = false;
+      gameState.playing = false;
     }
 
     function startGame() {
@@ -506,23 +525,30 @@
       gameState.playing = true;
     }
 
+    function startCountdown() {
+      gameState.countdown = true;
+      gameState.countdownStartTime = millis();
+    }
+
     function nextLevel() {
       gameState.level++;
       gameState.playing = false;
+      startCountdown();
     }
 
     function keyPressed() {
-      if (gameState.playing) {
+      if (gameState.playing || gameState.countdown) {
         return;
       }
       if (!gameState.started) {
         startGame();
+        startCountdown();
       }
       else if (gameState.ended) {
         resetGame();
       }
       else {
-        startLevel();
+        startCountdown();
       }
     }
   </script>
