@@ -40,6 +40,9 @@
       ended: false,
       countdown: false,
       countdownStartTime: 0,
+      levelStartTime: 0,
+      scores: {},
+      totalScore: 0
     };
 
     let levels = {
@@ -314,7 +317,26 @@
         fill(255);
         textSize(32);
         textAlign(CENTER, CENTER);
-        text("Game Over", width / 2, height / 2);
+        text("Game Over", width / 2, height / 2 - 60);
+        
+        // Display scores for each level
+        textSize(24);
+        let scoreY = height / 2 - 10;
+        
+        for (let level in gameState.scores) {
+          textAlign(RIGHT, CENTER);
+          text("Level " + level + ":", width / 2 - 10, scoreY);
+          textAlign(LEFT, CENTER);
+          text(gameState.scores[level] + " seconds", width / 2 + 10, scoreY);
+          scoreY += 30;
+        }
+        
+        // Display total score
+        scoreY += 10;
+        textAlign(RIGHT, CENTER);
+        text("Total time:", width / 2 - 10, scoreY);
+        textAlign(LEFT, CENTER);
+        text(gameState.totalScore + " seconds", width / 2 + 10, scoreY);
       } else if (gameState.countdown) {
         // Handle countdown
         const elapsedTime = millis() - gameState.countdownStartTime;
@@ -348,7 +370,14 @@
           return;
         }
         if (progress != null) {
+          // Display level and current time
+          const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
           fill(255);
+          textSize(24);
+          textAlign(LEFT, TOP);
+          text("Level " + gameState.level + " - Time: " + currentTime + "s", 20, 20);
+          
+          // Show progress bar
           textSize(32);
           textAlign(CENTER, CENTER);
           drawProgressBar(progress);
@@ -511,6 +540,8 @@
       gameState.ended = false;
       gameState.countdown = false;
       gameState.playing = false;
+      gameState.scores = {};
+      gameState.totalScore = 0;
     }
 
     function startGame() {
@@ -518,11 +549,18 @@
     }
 
     function endGame() {
+      // Calculate score for final level
+      const levelTime = (millis() - gameState.levelStartTime) / 1000;
+      gameState.scores[gameState.level] = levelTime.toFixed(2);
+      gameState.totalScore += parseFloat(levelTime);
+      gameState.totalScore = gameState.totalScore.toFixed(2); // Format total to 2 decimal places
+      
       gameState.ended = true;
     }
 
     function startLevel() {
       gameState.playing = true;
+      gameState.levelStartTime = millis();
     }
 
     function startCountdown() {
@@ -531,6 +569,12 @@
     }
 
     function nextLevel() {
+      // Calculate and store score for the completed level
+      const levelTime = (millis() - gameState.levelStartTime) / 1000; // Convert to seconds
+      gameState.scores[gameState.level] = levelTime.toFixed(2);
+      gameState.totalScore += parseFloat(levelTime);
+      
+      // Move to next level
       gameState.level++;
       gameState.playing = false;
       startCountdown();
