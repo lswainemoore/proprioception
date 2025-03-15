@@ -38,7 +38,7 @@
       // (and show error message around??)
       handPose = ml5.handPose({ flipped: true });
       bodyPose = ml5.bodyPose("BlazePose", { flipped: true });
-      fashMesh = ml5.faceMesh({ flipped: true });
+      faceMesh = ml5.faceMesh({ flipped: true, refineLandmarks: true });
     }
 
     function setup() {
@@ -51,7 +51,7 @@
 
       handPose.detectStart(video, gotHands);
       bodyPose.detectStart(video, gotBodies);
-      fashMesh.detectStart(video, gotFaces);
+      faceMesh.detectStart(video, gotFaces);
     }
 
     function gotHands(results) {
@@ -83,10 +83,15 @@
         mouthOpen: {
           title: "Mouth Open",
           calced: false
-        }
-
-        // TODO: one eyebrow raised
-        // implemented as ratio of distance (3d?) between right eyebrow and right eye and left eyebrow and left eye. 
+        },
+        eyebrowRaised: {
+          title: "Eyebrow Raised",
+          calced: false
+        },
+        handsOverHead: {
+          title: "Hands Over Head",
+          calced: false
+        },
       };
 
       if (hands) {
@@ -113,18 +118,31 @@
         const body = bodies[0];
         const leftWrist = body?.left_wrist;
         const rightWrist = body?.right_wrist;
-        if (leftWrist && rightWrist) {
+
+        if ((leftWrist && leftWrist.confidence > 0.9) && (rightWrist && rightWrist.confidence > 0.9)) {
           metrics.wrists.calced = true;
           metrics.wrists.twoD = calculate2DDistance(leftWrist, rightWrist);
           metrics.wrists.threeD = calculateBody3DDistance(leftWrist, rightWrist);
         }
+
+        const nose = body?.nose;
+
+        if ((nose && nose.confidence > 0.9) && (leftWrist && leftWrist.confidence > 0.9) && (rightWrist && rightWrist.confidence > 0.9)) {
+          metrics.handsOverHead.calced = true;
+
+          // this one is easiest as just 2d height on screen
+          const averageWristHeight = (leftWrist.y + rightWrist.y) / 2;
+          metrics.handsOverHead.twoD = nose.y - averageWristHeight;
+        }
+
       }
 
       if (faces && faces.length > 0) {
         const face = faces[0];
-        if (Math.random() < 0.01) {
-          console.log(face);
-        }
+        // if (Math.random() < 0.1) {
+        //   console.log(face);
+        // }
+        // console.log(face);
 
         // it's a little tricky to get a 3d distance for the face,
         // because the points are always given x/y/z which I'm not really sure how to make sense of.
@@ -136,17 +154,33 @@
           metrics.mouthOpen.ratio = face.lips?.height / face.lips?.width * 100.;
         }
 
+        // TODO note this doesn't really work yet. rotating the head screws it up dramatically,
+        // which I think is because x / y are projections onto the screen (how we're seeing them...)
+        // I think I need to read more about how to project them into space.
+        // mouth seems to have this issue to a much lesser degree.
+        if (face.leftEye && face.rightEye) {
+          // yipes. these are using indexes from: https://github.com/lschmelzeisen/understanding-mediapipe-facemesh-output/tree/main
+          const rightEyeInsideCorner = face.keypoints[133];
+          const rightEyeOutsideCorner = face.keypoints[33];
+          const rightEye = calculateFaceAveragePoint(rightEyeInsideCorner, rightEyeOutsideCorner);
+          const rightEyebrowMidInside = face.keypoints[65];
+          const rightEyebrowMidOutside = face.keypoints[52];
+          const rightEyebrow = calculateFaceAveragePoint(rightEyebrowMidInside, rightEyebrowMidOutside);
+          const rightEyebrowDist = calculateFace3DDistance(rightEyebrowMidInside, rightEyebrowMidOutside);
 
-        // imperfect per above.
-        // upper and lower parts of lips
-        // let lip1 = face.keypoints[13];
-        // let lip2 = face.keypoints[14];
+          const leftEyeInsideCorner = face.keypoints[362];
+          const leftEyeOutsideCorner = face.keypoints[263];
+          const leftEye = calculateFaceAveragePoint(leftEyeInsideCorner, leftEyeOutsideCorner);
+          const leftEyebrowMidInside = face.keypoints[295];
+          const leftEyebrowMidOutside = face.keypoints[282];
+          const leftEyebrow = calculateFaceAveragePoint(leftEyebrowMidInside, leftEyebrowMidOutside);
+          const leftEyebrowDist = calculateFace3DDistance(leftEyebrowMidInside, leftEyebrowMidOutside);
 
-        // if (lip1 && lip2) {
-        //   metrics.mouthOpen.calced = true;
-        //   metrics.mouthOpen.twoD = calculate2DDistance(lip1, lip2);
-        //   metrics.mouthOpen.threeD = calculateFace3DDistance(lip1, lip2);
-        // }
+          // console.log({rightEyebrowDist, leftEyebrowDist});
+
+          metrics.eyebrowRaised.ratio = leftEyebrowDist / rightEyebrowDist * 100;
+          metrics.eyebrowRaised.calced = true;
+        }
       }
 
       return metrics;
@@ -170,6 +204,8 @@
         for (let i = 0; i < faces.length; i++) {
           const face = faces[i];
           drawKeypoints(face.lips);
+          drawKeypoints(face.leftEye);
+          drawKeypoints(face.leftEyebrow);
         }
       }
     }
@@ -235,6 +271,22 @@
       const dy = point1.keypoint3D.y - point2.keypoint3D.y;
       const dz = point1.keypoint3D.z - point2.keypoint3D.z;
       return Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.;
+    }
+
+    function calculateFace3DDistance(point1, point2) {
+      // I think this is a little funny, or at least maybe should only be used for ratios.
+      // not sure how to interpret z.
+      const dx = point1.x - point2.x;
+      const dy = point1.y - point2.y;
+      const dz = point1.z - point2.z;
+      return Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.;
+    }
+
+    function calculateFaceAveragePoint(point1, point2) {
+      const x = (point1.x + point2.x) / 2;
+      const y = (point1.y + point2.y) / 2;
+      const z = (point1.z + point2.z) / 2;
+      return { x, y, z };
     }
 
     // function calculateFace3DDistance(point1, point2) {
