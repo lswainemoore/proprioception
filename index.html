@@ -33,6 +33,27 @@
     let bodies;
     let faces;
 
+    let gameState = {
+      started: false,
+      playing: false,
+      level: 1,
+      ended: false,
+    };
+
+    let levels = {
+      1: {
+        progressFunction: (metrics) => {
+          if (!metrics.handsOverHead.calced) {
+            return null;
+          }
+          // this would go from about -200 to 200, if head in center (and screen is 400 tall),
+          // so let's say < -100 is 0, > 100 is 1, and in between is linear.
+          const progress = Math.min(1, Math.max(0, (metrics.handsOverHead.twoD + 100) / 200));
+          return progress;
+        },
+      }
+    }
+
     function preload() {
       // TODO at least faceMesh has a maxFaces option, which would be nice to use
       // (and show error message around??)
@@ -52,6 +73,8 @@
       handPose.detectStart(video, gotHands);
       bodyPose.detectStart(video, gotBodies);
       faceMesh.detectStart(video, gotFaces);
+
+      resetGame();
     }
 
     function gotHands(results) {
@@ -238,8 +261,70 @@
       image(video, 0, 0, width, height);
 
       const metrics = computeMetrics();
+
+      // debugging
       drawAllMetrics(metrics);
       drawAllPoints();
+
+      // console.log(gameState)
+
+      // show game state
+      if (!gameState.started) {
+        fill(255);
+        textSize(32);
+        textAlign(CENTER, CENTER);
+        text("Press any key to start new game", width / 2, height / 2);
+      } else if (gameState.ended) {
+        fill(255);
+        textSize(32);
+        textAlign(CENTER, CENTER);
+        text("Game Over", width / 2, height / 2);
+      } else if (!gameState.playing) {
+        fill(255);
+        textSize(32);
+        textAlign(CENTER, CENTER);
+        text("Level " + gameState.level  + ": Press any key to start", width / 2, height / 2);
+      } else {
+        const level = levels[gameState.level];
+        const progressFunction = level.progressFunction;
+        const progress = progressFunction(metrics);
+        if (progress >= 1) {
+          if (levels[gameState.level + 1]) {
+            nextLevel();
+          } else {
+            endGame();
+          }
+          return;
+        }
+        if (progress != null) {
+          fill(255);
+          textSize(32);
+          textAlign(CENTER, CENTER);
+          drawProgressBar(progress);
+        } else {
+          fill(255);
+          textSize(32);
+          textAlign(CENTER, CENTER);
+          text("Relevant body parts not detected", width / 2, height / 2);
+        }
+      }
+    }
+
+    function drawProgressBar(progress) {
+      const barWidth = 200;
+      const barHeight = 20;
+      const barX = (width - barWidth) / 2;
+      const barY = height - 50;
+
+      // Draw the outline of the bar
+      stroke(255);
+      strokeWeight(2);
+      fill(0);
+      rect(barX, barY, barWidth, barHeight, 10);
+
+      // Draw the bar itself
+      fill(0, 255, 0);
+      rect(barX, barY, barWidth * progress, barHeight, 10);
     }
 
     function drawKeypoints(obj) {
@@ -366,6 +451,44 @@
             line(keypoint1.x, keypoint1.y, keypoint2.x, keypoint2.y);
           }
         }
+      }
+    }
+
+    function resetGame() {
+      gameState.started = false;
+      gameState.level = 1;
+      gameState.ended = false;
+    }
+
+    function startGame() {
+      gameState.started = true;
+    }
+
+    function endGame() {
+      gameState.ended = true;
+    }
+
+    function startLevel() {
+      gameState.playing = true;
+    }
+
+    function nextLevel() {
+      gameState.level++;
+      gameState.playing = false;
+    }
+
+    function keyPressed() {
+      if (gameState.playing) {
+        return;
+      }
+      if (!gameState.started) {
+        startGame();
+      }
+      else if (gameState.ended) {
+        resetGame();
+      }
+      else {
+        startLevel();
       }
     }
 
