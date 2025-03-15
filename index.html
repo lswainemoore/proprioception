@@ -67,12 +67,23 @@
           } else {
             return 1 - (metrics.leftHandPinch.threeD - 4) / 6;
           }
-          // const progress = Math.min(1, Math.max(0, (metrics.leftHandPinch.threeD - 5) / 5));
+        },
+      },
+      3: {
+        progressFunction: (metrics) => {
+          if (!metrics.mouthOpen.calced || !metrics.wrists.calced) {
+            return null;
+          }
 
-          // // this would go from about 0 to 100, if hands touching (and screen is 400 wide),
-          // // so let's say < 10 is 0, > 90 is 1, and in between is linear.
-          // const progress = Math.min(1, Math.max(0, (metrics.leftHandPinch.twoD + metrics.rightHandPinch.twoD) / 20));
-          // return progress;
+          // half the score is mouth open, half is wrists.
+
+          // mouth open is around 20 - 120, so let's say < 30 is 0, > 100 is 1, and in between is linear.
+          const mouthProgress = Math.min(1, Math.max(0, (metrics.mouthOpen.ratio - 30) / 70));
+
+          // wrists are 10 - 70, so let's say < 20 is 0, > 60 is 1, and in between is linear.
+          const wristProgress = Math.min(1, Math.max(0, 1 - (metrics.wrists.threeD - 20) / 40));
+
+          return (mouthProgress + wristProgress) / 2;
         },
       }
     }
@@ -165,7 +176,7 @@
         const leftWrist = body?.left_wrist;
         const rightWrist = body?.right_wrist;
 
-        if ((leftWrist && leftWrist.confidence > 0.9) && (rightWrist && rightWrist.confidence > 0.9)) {
+        if ((leftWrist && leftWrist.confidence > 0.5) && (rightWrist && rightWrist.confidence > 0.5)) {
           metrics.wrists.calced = true;
           metrics.wrists.twoD = calculate2DDistance(leftWrist, rightWrist);
           metrics.wrists.threeD = calculateBody3DDistance(leftWrist, rightWrist);
