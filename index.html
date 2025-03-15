@@ -32,6 +32,7 @@
     let hands;
     let bodies;
     let faces;
+    let debugMode = true;
 
     let gameState = {
       started: false,
@@ -113,6 +114,9 @@
       bodyPose.detectStart(video, gotBodies);
       faceMesh.detectStart(video, gotFaces);
 
+      // Set text to bold by default
+      textStyle(BOLD);
+      
       resetGame();
     }
 
@@ -301,9 +305,14 @@
 
       const metrics = computeMetrics();
 
-      // debugging
-      drawAllMetrics(metrics);
-      drawAllPoints();
+      // Only show debugging info if debug mode is enabled
+      if (debugMode) {
+        drawAllMetrics(metrics);
+        drawAllPoints();
+      }
+
+      // Reset text style to bold for game UI after potential debug drawing
+      textStyle(BOLD);
 
       // console.log(gameState)
 
@@ -369,14 +378,14 @@
           }
           return;
         }
+        // Always display level and current time
+        const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
+        fill(255);
+        textSize(24);
+        textAlign(LEFT, TOP);
+        text("Level " + gameState.level + " - Time: " + currentTime + "s", 20, 20);
+        
         if (progress != null) {
-          // Display level and current time
-          const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
-          fill(255);
-          textSize(24);
-          textAlign(LEFT, TOP);
-          text("Level " + gameState.level + " - Time: " + currentTime + "s", 20, 20);
-          
           // Show progress bar
           textSize(32);
           textAlign(CENTER, CENTER);
@@ -464,7 +473,7 @@
     function drawDistanceBox(distanceStrs) {
       // Box parameters
       const padding = 10;
-      const lineHeight = 24;
+      const lineHeight = 16; // Smaller line height for smaller text
       const boxWidth = 300;
       const boxHeight = padding * 2 + lineHeight * distanceStrs.length;
       const boxX = 20;
@@ -477,10 +486,11 @@
       strokeWeight(3);       // Thicker border
       rect(boxX, boxY, boxWidth, boxHeight, 10);  // Rounded corners
 
-      // Draw text
+      // Draw text - not bold and smaller
       fill(255);             // White text
       noStroke();
-      textSize(20);          // Text size
+      textStyle(NORMAL);     // Non-bold text for metrics
+      textSize(14);          // Smaller text size
       textAlign(LEFT, TOP);
 
       // Show each distance string
@@ -581,6 +591,12 @@
     }
 
     function keyPressed() {
+      // Toggle debug mode with 'd' key regardless of game state
+      if (key === 'd' || key === 'D') {
+        debugMode = !debugMode;
+        return;
+      }
+      
       if (gameState.playing || gameState.countdown) {
         return;
       }
