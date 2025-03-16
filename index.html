@@ -165,7 +165,10 @@
       usedEndlessLevelIndices: [], // Track which levels have been used
       showHint: false, // Whether to show a hint
       hintShown: false, // Track if hint has been shown for current level
-      currentHint: null // Store the current hint to keep it consistent
+      currentHint: null, // Store the current hint to keep it consistent
+      lockingIn: false, // Whether we're currently locking in a pose
+      lockInStartTime: 0, // When we started locking in
+      lockInDuration: 1500 // How long to hold pose (milliseconds)
     };
 
     // Utility function to create a level from metric IDs
@@ -827,9 +830,28 @@
         const smoothedProgress = smoothProgress(rawProgress);
         const progress = smoothedProgress;
         
+        // Handle lock-in logic for pose holding
         if (progress >= 1) {
-          nextLevel();
-          return;
+          // If we hit 100% and aren't already locking in, start the lock-in
+          if (!gameState.lockingIn) {
+            gameState.lockingIn = true;
+            gameState.lockInStartTime = millis();
+          } else {
+            // We're already in lock-in state, check if we've held long enough
+            const currentTime = millis();
+            const lockInElapsed = currentTime - gameState.lockInStartTime;
+            
+            // If we've held the pose long enough, complete the level
+            if (lockInElapsed >= gameState.lockInDuration) {
+              nextLevel();
+              return;
+            }
+          }
+        } else {
+          // If progress drops below 100%, cancel the lock-in
+          if (gameState.lockingIn) {
+            gameState.lockingIn = false;
+          }
         }
         // Display level and current time - minimal design
         const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
@@ -892,12 +914,13 @@
     
     function drawProgressBar(progress) {
       const barWidth = 300;
-      const barHeight = 8;
+      const barHeight = 16; // Made thicker (was 8)
       const barX = (width - barWidth) / 2;
       const barY = height - 40;
 
-      // Draw background
       push();
+      
+      // Draw background
       noStroke();
       fill(255, 255, 255, 40);
       rect(barX, barY, barWidth, barHeight, 4);
@@ -905,6 +928,21 @@
       // Draw the progress bar - simple, modern
       fill(255);
       rect(barX, barY, barWidth * progress, barHeight, 4);
+      
+      // Draw lock-in animation if actively locking in
+      if (gameState.lockingIn) {
+        const currentTime = millis();
+        const lockInProgress = (currentTime - gameState.lockInStartTime) / gameState.lockInDuration;
+        
+        // Calculate the width of the sliding green bar
+        const greenBarWidth = barWidth * lockInProgress;
+        
+        // Draw the sliding green bar on top of the white progress bar
+        noStroke();
+        fill(50, 220, 50); // Bright green
+        rect(barX, barY, greenBarWidth, barHeight, 4);
+      }
+      
       pop();
     }
 
@@ -1084,6 +1122,8 @@
       gameState.showHint = false;
       gameState.hintShown = false;
       gameState.currentHint = null;
+      gameState.lockingIn = false;
+      gameState.lockInStartTime = 0;
       currentEndlessLevel = null;
     }
 
@@ -1116,6 +1156,8 @@
       gameState.showHint = false;
       gameState.hintShown = false;
       gameState.currentHint = null; // Reset hint for new level
+      gameState.lockingIn = false;  // Reset lock-in state
+      gameState.lockInStartTime = 0;
     }
 
     function startCountdown() {
