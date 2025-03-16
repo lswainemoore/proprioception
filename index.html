@@ -205,10 +205,11 @@
     
     // Standard mode levels - predefined progression
     let levels = [
-      createLevel(['leftHandOverHead', 'rightHandOverHead']), // Level 1: Raise both hands above head separately
-      createLevel(['leftHandPinch']),                        // Level 2: Pinch left thumb and index finger
-      createLevel(['mouthOpen', 'wrists']),                  // Level 3: Open mouth and bring wrists together
-      createLevel(['leftHandBack', 'rightHandBack'])         // Level 4: Show the back of both hands
+      createLevel(['leftHandOverHead']),                     // Level 1: Raise left hand above head (Easy)
+      createLevel(['leftHandPinch']),                        // Level 2: Pinch left thumb and index finger (Easy)
+      createLevel(['mouthOpen', 'wrists']),                  // Level 3: Open mouth and bring wrists together (Medium)
+      createLevel(['leftHandBack', 'rightHandBack']),        // Level 4: Show the back of both hands (Medium)
+      createLevel(['leftHandOverHead', 'mouthOpen', 'wrists']) // Level 5: Triple combo (Hard)
     ]
     
     // Available metrics for endless mode with hints
@@ -833,12 +834,34 @@
         // Display level and current time - minimal design
         const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
         
-        // Simple text without box
+        // Get current level difficulty
+        let difficulty = "Easy";
+        let currentMetricIds = [];
+        
+        if (gameState.mode === 'standard') {
+          const levelIndex = gameState.level - 1;
+          currentMetricIds = levels[levelIndex].metricIds;
+        } else if (gameState.mode === 'endless' && currentEndlessLevel) {
+          currentMetricIds = currentEndlessLevel.metricIds;
+        }
+        
+        // Set difficulty based on number of metrics
+        if (currentMetricIds.length === 2) {
+          difficulty = "Medium";
+        } else if (currentMetricIds.length >= 3) {
+          difficulty = "Hard";
+        }
+        
+        // Simple text without box for timer - left side
         push();
         fill(255);
         textSize(20);
         textAlign(LEFT, TOP);
-        text("Level " + gameState.level + " • " + currentTime + "s", 20, 20);
+        text(currentTime + "s", 20, 20);
+        
+        // Level indicator with difficulty in top right
+        textAlign(RIGHT, TOP);
+        text("Level " + gameState.level + " • " + difficulty, width - 20, 20);
         pop();
         
         if (progress != null) {
