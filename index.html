@@ -32,7 +32,7 @@
     let hands;
     let bodies;
     let faces;
-    let debugMode = true;
+    let debugMode = false;
 
     let gameState = {
       started: false,
@@ -46,8 +46,8 @@
       totalScore: 0
     };
 
-    let levels = {
-      1: {
+    let levels = [
+      {
         progressFunction: (metrics) => {
           if (!metrics.handsOverHead.calced) {
             return null;
@@ -58,7 +58,7 @@
           return progress;
         },
       },
-      2: {
+      {
         progressFunction: (metrics) => {
           if (!metrics.leftHandPinch.calced) {
             return null;
@@ -75,7 +75,7 @@
           }
         },
       },
-      3: {
+      {
         progressFunction: (metrics) => {
           if (!metrics.mouthOpen.calced || !metrics.wrists.calced) {
             return null;
@@ -92,7 +92,7 @@
           return (mouthProgress + wristProgress) / 2;
         },
       }
-    }
+    ]
 
     function preload() {
       // TODO at least faceMesh has a maxFaces option, which would be nice to use
@@ -346,6 +346,11 @@
         text("Total time:", width / 2 - 10, scoreY);
         textAlign(LEFT, CENTER);
         text(gameState.totalScore + " seconds", width / 2 + 10, scoreY);
+        
+        // Add instruction to press key to restart
+        textSize(20);
+        textAlign(CENTER, CENTER);
+        text("Press any key to play again", width / 2, scoreY + 50);
       } else if (gameState.countdown) {
         // Handle countdown
         const elapsedTime = millis() - gameState.countdownStartTime;
@@ -367,11 +372,13 @@
         textAlign(CENTER, CENTER);
         text("Level " + gameState.level + ": Press any key to start", width / 2, height / 2);
       } else {
-        const level = levels[gameState.level];
+        // Get level from array (0-indexed)
+        const levelIndex = gameState.level - 1;
+        const level = levels[levelIndex];
         const progressFunction = level.progressFunction;
         const progress = progressFunction(metrics);
         if (progress >= 1) {
-          if (levels[gameState.level + 1]) {
+          if (levelIndex < levels.length - 1) {
             nextLevel();
           } else {
             endGame();
@@ -565,6 +572,7 @@
       gameState.totalScore += parseFloat(levelTime);
       gameState.totalScore = gameState.totalScore.toFixed(2); // Format total to 2 decimal places
       
+      gameState.playing = false; // Make sure playing is set to false
       gameState.ended = true;
     }
 
@@ -590,6 +598,12 @@
       startCountdown();
     }
 
+    function restartGame() {
+      resetGame();
+      startGame();
+      startCountdown();
+    }
+    
     function keyPressed() {
       // Toggle debug mode with 'd' key regardless of game state
       if (key === 'd' || key === 'D') {
@@ -597,17 +611,22 @@
         return;
       }
       
+      // Handle restart after game over
+      if (gameState.ended) {
+        restartGame();
+        return;
+      }
+      
+      // Don't proceed if already playing or counting down
       if (gameState.playing || gameState.countdown) {
         return;
       }
+      
+      // Starting a new game or level
       if (!gameState.started) {
         startGame();
         startCountdown();
-      }
-      else if (gameState.ended) {
-        resetGame();
-      }
-      else {
+      } else {
         startCountdown();
       }
     }
