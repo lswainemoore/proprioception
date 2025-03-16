@@ -154,9 +154,14 @@
       scores: {},
       totalScore: 0,
       progressHistory: [], // Array to store recent progress values
-      progressHistorySize: 5 // Number of frames to average
+      progressHistorySize: 5, // Number of frames to average
+      mode: null, // 'standard' or 'endless'
+      menuScreen: true, // Show mode selection menu
+      endlessLevels: [], // All possible combinations for endless mode
+      usedEndlessLevelIndices: [] // Track which levels have been used
     };
 
+    // Standard mode levels
     let levels = [
       {
         progressFunction: (metrics) => {
@@ -193,6 +198,120 @@
         },
       }
     ]
+    
+    // Available metrics for endless mode
+    const availableMetrics = [
+      { 
+        id: 'handsOverHead',
+        title: 'Raise hands above head'
+      },
+      { 
+        id: 'leftHandPinch',
+        title: 'Pinch left thumb and index finger'
+      },
+      { 
+        id: 'rightHandPinch',
+        title: 'Pinch right thumb and index finger'
+      },
+      { 
+        id: 'mouthOpen',
+        title: 'Open mouth'
+      },
+      { 
+        id: 'wrists',
+        title: 'Bring wrists together'
+      },
+      { 
+        id: 'leftHandBack',
+        title: 'Show back of left hand'
+      },
+      { 
+        id: 'rightHandBack',
+        title: 'Show back of right hand'
+      }
+    ];
+    
+    // Generate all possible metric combinations for endless mode
+    function generateAllEndlessLevels() {
+      const allLevels = [];
+      
+      // First, add all single-metric levels
+      for (let i = 0; i < availableMetrics.length; i++) {
+        const metric = availableMetrics[i];
+        allLevels.push({
+          metricIds: [metric.id],
+          progressFunction: (metrics) => {
+            return metrics[metric.id].score;
+          }
+        });
+      }
+      
+      // Then, add all possible combinations of two metrics
+      for (let i = 0; i < availableMetrics.length; i++) {
+        for (let j = i + 1; j < availableMetrics.length; j++) {
+          const metric1 = availableMetrics[i];
+          const metric2 = availableMetrics[j];
+          
+          allLevels.push({
+            metricIds: [metric1.id, metric2.id],
+            progressFunction: (metrics) => {
+              if (metrics[metric1.id].score == null || metrics[metric2.id].score == null) {
+                return null;
+              }
+              
+              // Average of both scores (50% weight each)
+              return (metrics[metric1.id].score + metrics[metric2.id].score) / 2;
+            }
+          });
+        }
+      }
+      
+      return allLevels;
+    }
+    
+    // Get next endless level based on game state
+    function getNextEndlessLevel() {
+      // If there are no endless levels generated yet, create them
+      if (gameState.endlessLevels.length === 0) {
+        gameState.endlessLevels = generateAllEndlessLevels();
+      }
+      
+      let levelIndex;
+      
+      if (gameState.level <= 3) {
+        // First three levels should be single metrics
+        const unusedSingleLevels = gameState.endlessLevels
+          .map((level, index) => ({ level, index }))
+          .filter(item => item.level.metricIds.length === 1)
+          .filter(item => !gameState.usedEndlessLevelIndices.includes(item.index));
+        
+        if (unusedSingleLevels.length === 0) {
+          // This shouldn't happen in the first 3 rounds, but just in case
+          return null;
+        }
+        
+        const randomIndex = Math.floor(Math.random() * unusedSingleLevels.length);
+        levelIndex = unusedSingleLevels[randomIndex].index;
+      } else {
+        // After round 3, use any remaining single metrics or double combinations
+        const unusedLevels = gameState.endlessLevels
+          .map((level, index) => ({ level, index }))
+          .filter(item => !gameState.usedEndlessLevelIndices.includes(item.index));
+        
+        if (unusedLevels.length === 0) {
+          // All levels have been used, end the game
+          return null;
+        }
+        
+        const randomIndex = Math.floor(Math.random() * unusedLevels.length);
+        levelIndex = unusedLevels[randomIndex].index;
+      }
+      
+      // Mark this level as used
+      gameState.usedEndlessLevelIndices.push(levelIndex);
+      
+      return gameState.endlessLevels[levelIndex];
+    }
 
     function preload() {
       // TODO at least faceMesh has a maxFaces option, which would be nice to use
@@ -472,22 +591,80 @@
 
       // show game state
       if (!gameState.started) {
-        // Title and start screen - more understated
-        push();
-        fill(255);
-        textSize(42);
-        textAlign(CENTER, CENTER);
-        text("PROPRIOCEPTION", width / 2, height / 2 - 30);
-        
-        // Instructions - simple white text
-        textSize(24);
-        text("Press any key to start", width / 2, height / 2 + 40);
-        
-        // Debug info - smaller and less obtrusive
-        // textSize(14);
-        // fill(180, 180, 180);
-        // text("Press 'D' to toggle debug view", width / 2, height - 20);
-        pop();
+        if (gameState.menuScreen) {
+          // Mode selection screen
+          push();
+          fill(255);
+          textSize(42);
+          textAlign(CENTER, CENTER);
+          text("PROPRIOCEPTION", width / 2, height / 2 - 80);
+          
+          // Draw mode selection buttons
+          const buttonWidth = 160;
+          const buttonHeight = 50;
+          const buttonSpacing = 20;
+          const buttonY = height / 2 + 20;
+          
+          // Standard mode button
+          const standardX = width / 2 - buttonWidth - buttonSpacing/2;
+          fill(80, 80, 80);
+          stroke(255);
+          strokeWeight(2);
+          rect(standardX, buttonY, buttonWidth, buttonHeight, 8);
+          
+          // Endless mode button
+          const endlessX = width / 2 + buttonSpacing/2;
+          fill(80, 80, 80);
+          stroke(255);
+          strokeWeight(2);
+          rect(endlessX, buttonY, buttonWidth, buttonHeight, 8);
+          
+          // Button text
+          noStroke();
+          fill(255);
+          textSize(20);
+          textAlign(CENTER, CENTER);
+          text("STANDARD", standardX + buttonWidth/2, buttonY + buttonHeight/2);
+          text("ENDLESS", endlessX + buttonWidth/2, buttonY + buttonHeight/2);
+          
+          // Instructions
+          textSize(16);
+          fill(200, 200, 200);
+          text("Click to select game mode", width / 2, buttonY + buttonHeight + 30);
+          pop();
+          
+          // Check for button clicks
+          if (mouseIsPressed) {
+            if (mouseX > standardX && mouseX < standardX + buttonWidth &&
+                mouseY > buttonY && mouseY < buttonY + buttonHeight) {
+              // Standard mode selected
+              startGame('standard');
+              startCountdown();
+            } else if (mouseX > endlessX && mouseX < endlessX + buttonWidth &&
+                     mouseY > buttonY && mouseY < buttonY + buttonHeight) {
+              // Endless mode selected
+              startGame('endless');
+              startCountdown();
+            }
+          }
+        } else {
+          // Title and start screen - more understated
+          push();
+          fill(255);
+          textSize(42);
+          textAlign(CENTER, CENTER);
+          text("PROPRIOCEPTION", width / 2, height / 2 - 30);
+          
+          // Instructions - simple white text
+          textSize(24);
+          text("Press any key to start", width / 2, height / 2 + 40);
+          
+          // Debug info - smaller and less obtrusive
+          // textSize(14);
+          // fill(180, 180, 180);
+          // text("Press 'D' to toggle debug view", width / 2, height - 20);
+          pop();
+        }
       } else if (gameState.ended) {
         // Game over screen - more understated
         push();
@@ -544,7 +721,14 @@
           fill(255);
           textSize(24);
           textAlign(CENTER, CENTER);
+          
+          // Just show the level number, no titles
           text("Level " + gameState.level, width / 2, height / 2 - 40);
+          
+          // Make sure we have a current endless level if needed
+          if (gameState.mode === 'endless' && !currentEndlessLevel && gameState.level === 1) {
+            currentEndlessLevel = getNextEndlessLevel();
+          }
           
           // Countdown number - simple, no effects
           textSize(60);
@@ -552,22 +736,29 @@
           pop();
         }
       } else {
-        // Get level from array (0-indexed)
-        const levelIndex = gameState.level - 1;
-        const level = levels[levelIndex];
-        const progressFunction = level.progressFunction;
-        const rawProgress = progressFunction(metrics);
+        // Get the current level and progress function based on mode
+        let progressFunction;
+        let rawProgress;
+        
+        if (gameState.mode === 'standard') {
+          // Standard mode - get level from predefined array
+          const levelIndex = gameState.level - 1;
+          const level = levels[levelIndex];
+          progressFunction = level.progressFunction;
+        } else if (gameState.mode === 'endless') {
+          // Endless mode - use current endless level
+          progressFunction = currentEndlessLevel.progressFunction;
+        }
+        
+        // Calculate progress
+        rawProgress = progressFunction(metrics);
         
         // Apply smoothing to progress value
         const smoothedProgress = smoothProgress(rawProgress);
         const progress = smoothedProgress;
         
         if (progress >= 1) {
-          if (levelIndex < levels.length - 1) {
-            nextLevel();
-          } else {
-            endGame();
-          }
+          nextLevel();
           return;
         }
         // Display level and current time - minimal design
@@ -772,6 +963,9 @@
       return weightedSum / totalWeight;
     }
     
+    // Current endless mode level (for reference)
+    let currentEndlessLevel = null;
+    
     function resetGame() {
       gameState.started = false;
       gameState.level = 1;
@@ -781,10 +975,22 @@
       gameState.scores = {};
       gameState.totalScore = 0;
       gameState.progressHistory = [];
+      gameState.menuScreen = true;
+      gameState.mode = null;
+      gameState.endlessLevels = [];
+      gameState.usedEndlessLevelIndices = [];
+      currentEndlessLevel = null;
     }
 
-    function startGame() {
+    function startGame(mode) {
       gameState.started = true;
+      gameState.menuScreen = false;
+      gameState.mode = mode;
+      
+      // For endless mode, generate all levels if not already done
+      if (mode === 'endless' && gameState.endlessLevels.length === 0) {
+        gameState.endlessLevels = generateAllEndlessLevels();
+      }
     }
 
     function endGame() {
@@ -818,13 +1024,30 @@
       // Move to next level
       gameState.level++;
       gameState.playing = false;
+      
+      if (gameState.mode === 'endless') {
+        // Get the next endless level
+        currentEndlessLevel = getNextEndlessLevel();
+        
+        // If there are no more levels, end the game
+        if (currentEndlessLevel === null) {
+          endGame();
+          return;
+        }
+      } else if (gameState.mode === 'standard') {
+        // End the game if we've completed all standard levels
+        if (gameState.level > levels.length) {
+          endGame();
+          return;
+        }
+      }
+      
       startCountdown();
     }
 
     function restartGame() {
       resetGame();
-      startGame();
-      startCountdown();
+      // Go back to the menu screen
     }
     
     function keyPressed() {
@@ -846,12 +1069,14 @@
       }
       
       // Starting a new game or level
-      if (!gameState.started) {
-        startGame();
+      if (!gameState.started && !gameState.menuScreen) {
+        // Only start with key press if we're not on the menu screen
+        startGame(gameState.mode || 'standard');
         startCountdown();
-      } else {
+      } else if (gameState.started) {
         startCountdown();
       }
+      // Note: on menu screen, clicks handle mode selection, not key presses
     }
   </script>
 </body>
