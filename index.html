@@ -313,44 +313,76 @@
 
       // Reset text style to bold for game UI after potential debug drawing
       textStyle(BOLD);
+      
+      // Add overlay for text readability when needed
+      if (!gameState.playing) {
+        // Simple semi-transparent dark overlay
+        fill(0, 0, 0, 150);
+        noStroke();
+        rect(0, 0, width, height);
+      }
 
       // console.log(gameState)
 
       // show game state
       if (!gameState.started) {
+        // Title and start screen - more understated
+        push();
         fill(255);
-        textSize(32);
+        textSize(42);
         textAlign(CENTER, CENTER);
-        text("Press any key to start new game", width / 2, height / 2);
+        text("PROPRIOCEPTION", width / 2, height / 2 - 30);
+        
+        // Instructions - simple white text
+        textSize(24);
+        text("Press any key to start", width / 2, height / 2 + 40);
+        
+        // Debug info - smaller and less obtrusive
+        // textSize(14);
+        // fill(180, 180, 180);
+        // text("Press 'D' to toggle debug view", width / 2, height - 20);
+        pop();
       } else if (gameState.ended) {
+        // Game over screen - more understated
+        push();
         fill(255);
-        textSize(32);
+        textSize(28);
         textAlign(CENTER, CENTER);
-        text("Game Over", width / 2, height / 2 - 60);
+        text("Game Complete", width / 2, height / 2 - 80);
+        
+        // Display scores in a clean, minimal format
+        noStroke();
+        
+        textSize(20);
+        textAlign(RIGHT, CENTER);
+        text("LEVEL", width/2 - 100, height/2 - 40);
+        text("TIME", width/2 + 100, height/2 - 40);
         
         // Display scores for each level
-        textSize(24);
-        let scoreY = height / 2 - 10;
+        fill(255);
+        textSize(18);
+        let scoreY = height / 2;
         
         for (let level in gameState.scores) {
           textAlign(RIGHT, CENTER);
-          text("Level " + level + ":", width / 2 - 10, scoreY);
+          text(level, width/2 - 100, scoreY);
           textAlign(LEFT, CENTER);
-          text(gameState.scores[level] + " seconds", width / 2 + 10, scoreY);
-          scoreY += 30;
+          text(gameState.scores[level] + " sec.", width/2 + 20, scoreY);
+          scoreY += 26;
         }
         
-        // Display total score
-        scoreY += 10;
+        // Display total score - aligned with level scores
+        fill(255);
+        textSize(18);
         textAlign(RIGHT, CENTER);
-        text("Total time:", width / 2 - 10, scoreY);
+        text("TOTAL", width/2 - 100, scoreY);
         textAlign(LEFT, CENTER);
-        text(gameState.totalScore + " seconds", width / 2 + 10, scoreY);
+        text(gameState.totalScore + " sec.", width/2 + 20, scoreY);
         
-        // Add instruction to press key to restart
-        textSize(20);
-        textAlign(CENTER, CENTER);
-        text("Press any key to play again", width / 2, scoreY + 50);
+        // Add instruction to press key to restart (positioned at fixed distance from bottom)
+        textSize(18);
+        text("Press any key to play again", width / 2, height - 40);
+        pop();
       } else if (gameState.countdown) {
         // Handle countdown
         const elapsedTime = millis() - gameState.countdownStartTime;
@@ -361,16 +393,41 @@
           gameState.countdown = false;
           startLevel();
         } else {
+          push();
+          // Level title - simple, clean
           fill(255);
-          textSize(32);
+          textSize(24);
           textAlign(CENTER, CENTER);
-          text("Level " + gameState.level + " starting in " + countdownSeconds, width / 2, height / 2);
+          text("Level " + gameState.level, width / 2, height / 2 - 40);
+          
+          // Countdown number - simple, no effects
+          textSize(60);
+          text(countdownSeconds, width / 2, height / 2 + 20);
+          pop();
         }
       } else if (!gameState.playing) {
+        push();
+        // Level intro screen - minimal
         fill(255);
-        textSize(32);
+        textSize(28);
         textAlign(CENTER, CENTER);
-        text("Level " + gameState.level + ": Press any key to start", width / 2, height / 2);
+        text("Level " + gameState.level, width / 2, height / 2 - 40);
+        
+        // Display description based on level
+        textSize(20);
+        
+        if (gameState.level === 1) {
+          text("Raise your hands above your head", width / 2, height / 2 + 10);
+        } else if (gameState.level === 2) {
+          text("Pinch your left thumb and index finger", width / 2, height / 2 + 10);
+        } else if (gameState.level === 3) {
+          text("Open your mouth and bring your wrists together", width / 2, height / 2 + 10);
+        }
+        
+        // Start instructions
+        textSize(18);
+        text("Press any key to begin", width / 2, height / 2 + 60);
+        pop();
       } else {
         // Get level from array (0-indexed)
         const levelIndex = gameState.level - 1;
@@ -385,12 +442,16 @@
           }
           return;
         }
-        // Always display level and current time
+        // Display level and current time - minimal design
         const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
+        
+        // Simple text without box
+        push();
         fill(255);
-        textSize(24);
+        textSize(20);
         textAlign(LEFT, TOP);
-        text("Level " + gameState.level + " - Time: " + currentTime + "s", 20, 20);
+        text("Level " + gameState.level + " • " + currentTime + "s", 20, 20);
+        pop();
         
         if (progress != null) {
           // Show progress bar
@@ -406,21 +467,24 @@
       }
     }
 
+    // Removed overlay functions to fix visual issues
+    
     function drawProgressBar(progress) {
-      const barWidth = 200;
-      const barHeight = 20;
+      const barWidth = 300;
+      const barHeight = 8;
       const barX = (width - barWidth) / 2;
-      const barY = height - 50;
+      const barY = height - 40;
 
-      // Draw the outline of the bar
-      stroke(255);
-      strokeWeight(2);
-      fill(0);
-      rect(barX, barY, barWidth, barHeight, 10);
+      // Draw background
+      push();
+      noStroke();
+      fill(255, 255, 255, 40);
+      rect(barX, barY, barWidth, barHeight, 4);
 
-      // Draw the bar itself
-      fill(0, 255, 0);
-      rect(barX, barY, barWidth * progress, barHeight, 10);
+      // Draw the progress bar - simple, modern
+      fill(255);
+      rect(barX, barY, barWidth * progress, barHeight, 4);
+      pop();
     }
 
     function drawKeypoints(obj) {
