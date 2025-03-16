@@ -932,7 +932,17 @@
       // Draw lock-in animation if actively locking in
       if (gameState.lockingIn) {
         const currentTime = millis();
-        const lockInProgress = (currentTime - gameState.lockInStartTime) / gameState.lockInDuration;
+        let lockInProgress = (currentTime - gameState.lockInStartTime) / gameState.lockInDuration;
+        
+        // Quick ease-in at the beginning, longer ease-out at the end
+        // Using a custom easing function to achieve the desired effect
+        if (lockInProgress < 0.2) {
+          // First 20% - accelerate quickly (quadratic ease-in)
+          lockInProgress = (lockInProgress / 0.2) * (lockInProgress / 0.2) * 0.3;
+        } else {
+          // Remaining 80% - decelerate more gradually (cubic ease-out)
+          lockInProgress = 0.3 + 0.7 * (1 - Math.pow(1 - ((lockInProgress - 0.2) / 0.8), 3));
+        }
         
         // Calculate the width of the sliding green bar
         const greenBarWidth = barWidth * lockInProgress;
