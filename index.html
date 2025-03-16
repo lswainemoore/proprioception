@@ -97,6 +97,26 @@
           return 0;
         }
       },
+      leftHandOverHead: {
+        title: "Left Hand Over Head",
+        calculateScore: function(metric) {
+          if (!metric.calced) return null;
+          
+          // Height difference between head and hand, approx range -200 to 200
+          // < -100 is score 0, > 100 is score 1, and in between is linear.
+          return Math.min(1, Math.max(0, (metric.twoD + 100) / 200));
+        }
+      },
+      rightHandOverHead: {
+        title: "Right Hand Over Head",
+        calculateScore: function(metric) {
+          if (!metric.calced) return null;
+          
+          // Height difference between head and hand, approx range -200 to 200
+          // < -100 is score 0, > 100 is score 1, and in between is linear.
+          return Math.min(1, Math.max(0, (metric.twoD + 100) / 200));
+        }
+      },
       handsOverHead: {
         title: "Hands Over Head",
         calculateScore: function(metric) {
@@ -182,17 +202,25 @@
     
     // Standard mode levels - predefined progression
     let levels = [
-      createLevel(['handsOverHead']),                      // Level 1: Raise hands above head
-      createLevel(['leftHandPinch']),                      // Level 2: Pinch left thumb and index finger
-      createLevel(['mouthOpen', 'wrists']),                // Level 3: Open mouth and bring wrists together
-      createLevel(['leftHandBack', 'rightHandBack'])       // Level 4: Show the back of both hands
+      createLevel(['leftHandOverHead', 'rightHandOverHead']), // Level 1: Raise both hands above head separately
+      createLevel(['leftHandPinch']),                        // Level 2: Pinch left thumb and index finger
+      createLevel(['mouthOpen', 'wrists']),                  // Level 3: Open mouth and bring wrists together
+      createLevel(['leftHandBack', 'rightHandBack'])         // Level 4: Show the back of both hands
     ]
     
     // Available metrics for endless mode
     const availableMetrics = [
       { 
         id: 'handsOverHead',
-        title: 'Raise hands above head'
+        title: 'Raise both hands above head'
+      },
+      { 
+        id: 'leftHandOverHead',
+        title: 'Raise left hand above head'
+      },
+      { 
+        id: 'rightHandOverHead',
+        title: 'Raise right hand above head'
       },
       { 
         id: 'leftHandPinch',
@@ -416,12 +444,24 @@
 
         const nose = body?.nose;
 
-        if ((nose && nose.confidence > 0.9) && (leftWrist && leftWrist.confidence > 0.9) && (rightWrist && rightWrist.confidence > 0.9)) {
-          metrics.handsOverHead.calced = true;
-
-          // this one is easiest as just 2d height on screen
-          const averageWristHeight = (leftWrist.y + rightWrist.y) / 2;
-          metrics.handsOverHead.twoD = nose.y - averageWristHeight;
+        if (nose && nose.confidence > 0.9) {
+          // Individual hands over head
+          if (leftWrist && leftWrist.confidence > 0.9) {
+            metrics.leftHandOverHead.calced = true;
+            metrics.leftHandOverHead.twoD = nose.y - leftWrist.y;
+          }
+          
+          if (rightWrist && rightWrist.confidence > 0.9) {
+            metrics.rightHandOverHead.calced = true;
+            metrics.rightHandOverHead.twoD = nose.y - rightWrist.y;
+          }
+          
+          // Both hands over head (average height)
+          if ((leftWrist && leftWrist.confidence > 0.9) && (rightWrist && rightWrist.confidence > 0.9)) {
+            metrics.handsOverHead.calced = true;
+            const averageWristHeight = (leftWrist.y + rightWrist.y) / 2;
+            metrics.handsOverHead.twoD = nose.y - averageWristHeight;
+          }
         }
 
       }
