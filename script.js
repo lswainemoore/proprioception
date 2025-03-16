@@ -316,13 +316,13 @@ function preload() {
 }
 
 function setup() {
-  // Create canvas inside the canvas-container for proper positioning
+  // Just create the canvas at the original fixed size - this is safer
   const canvas = createCanvas(640, 480);
   canvas.parent("canvas-container");
 
   // Create video and hide it
   video = createCapture(VIDEO, { flipped: true });
-  video.size(640, 480);
+  video.size(640, 480); // Keep original size for ML processing
   video.hide();
 
   handPose.detectStart(video, gotHands);
@@ -331,8 +331,16 @@ function setup() {
 
   // Set text to bold by default
   textStyle(BOLD);
+  
+  // Add window resize listener to update canvas size
+  window.addEventListener('resize', windowResized);
 
   resetGame();
+}
+
+// Handle window resize events - but keep fixed dimensions
+function windowResized() {
+  resizeCanvas(640, 480);
 }
 
 function gotHands(results) {
@@ -877,6 +885,8 @@ function draw() {
   // Draw video with a slight processing effect
   push();
   tint(200, 220, 255, 240); // Slightly blue tint
+  
+  // Draw the video to fill the entire canvas
   image(video, 0, 0, width, height);
   pop();
 
