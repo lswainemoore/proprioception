@@ -174,8 +174,9 @@ canvas {
 
 #mode-instruction {
   color: rgba(255, 255, 255, 0.8);
-  margin-top: 30px;
+  margin-top: 10px;
   font-size: clamp(12px, 3vw, 16px);
+  opacity: 0.7;
 }
 
 /* Error message overlay */
@@ -203,7 +204,7 @@ canvas {
   pointer-events: none;
   justify-content: center;
   align-items: flex-end;
-  padding-bottom: 15%;
+  padding-bottom: 80px;
 }
 
 #hint-box {

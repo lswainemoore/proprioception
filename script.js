@@ -1390,6 +1390,7 @@ function smoothProgress(rawProgress) {
   // Handle null value
   if (rawProgress === null) {
     gameState.progressHistory = []; // Clear history when detection is lost
+    updateProgressBar(0); // Reset progress bar to 0
     return null;
   }
 
@@ -1438,12 +1439,15 @@ function resetGame() {
   gameState.lockInStartTime = 0;
   currentEndlessLevel = null;
 
-  // Update UI
+  // Update UI - hide game elements
   if (domElements.levelIndicator)
     domElements.levelIndicator.style.display = "none";
   if (domElements.timer) domElements.timer.style.display = "none";
   if (domElements.progressContainer)
     domElements.progressContainer.style.display = "none";
+    
+  // Reset progress bar
+  updateProgressBar(0);
 
   // Show mode selection
   hideOverlay("countdownOverlay");
@@ -1525,6 +1529,11 @@ function startCountdown() {
   hideOverlay("errorOverlay");
   hideOverlay("hintOverlay");
   hideOverlay("completeOverlay");
+  
+  // Hide game UI during countdown
+  if (domElements.levelIndicator) domElements.levelIndicator.style.display = "none";
+  if (domElements.timer) domElements.timer.style.display = "none";
+  if (domElements.progressContainer) domElements.progressContainer.style.display = "none";
 
   // Get difficulty for level display
   let difficulty = "Easy";
