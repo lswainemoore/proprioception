@@ -93,6 +93,43 @@
 
           return (mouthProgress + wristProgress) / 2;
         },
+      },
+      {
+        progressFunction: (metrics) => {
+          // Level 4: Show the back of both hands to the camera (50% weight for each hand)
+          if (!metrics.leftHandBack.calced || !metrics.rightHandBack.calced) {
+            return null;
+          }
+          
+          // For each hand:
+          // Value range is approximately -1 to 1
+          // -1: Palm facing camera
+          // 1: Back of hand facing camera
+          // We need positive values (back of hand) to make progress
+          
+          // Calculate progress for left hand
+          let leftProgress;
+          if (metrics.leftHandBack.orientation >= 0.8) {
+            leftProgress = 1;
+          } else if (metrics.leftHandBack.orientation <= -0.8) {
+            leftProgress = 0;
+          } else {
+            leftProgress = (metrics.leftHandBack.orientation + 0.8) / 1.6;
+          }
+          
+          // Calculate progress for right hand
+          let rightProgress;
+          if (metrics.rightHandBack.orientation >= 0.8) {
+            rightProgress = 1;
+          } else if (metrics.rightHandBack.orientation <= -0.8) {
+            rightProgress = 0;
+          } else {
+            rightProgress = (metrics.rightHandBack.orientation + 0.8) / 1.6;
+          }
+
+          // Return average of both hand progress values (50% weight each)
+          return (leftProgress + rightProgress) / 2;
+        },
       }
     ]
 
@@ -160,6 +197,14 @@
           title: "Hands Over Head",
           calced: false
         },
+        leftHandBack: {
+          title: "Left Hand Back",
+          calced: false
+        },
+        rightHandBack: {
+          title: "Right Hand Back",
+          calced: false
+        },
       };
 
       if (hands) {
@@ -167,6 +212,12 @@
           const hand = hands[i];
           const thumbTip = hand?.thumb_tip;
           const indexTip = hand?.index_finger_tip;
+          
+          // We need these points for hand orientation calculation
+          const wrist = hand?.wrist;
+          const middleBase = hand?.middle_finger_mcp; // Middle finger metacarpophalangeal joint (base)
+          const indexBase = hand?.index_finger_mcp;   // Index finger base
+          const pinkyBase = hand?.pinky_finger_mcp;   // Pinky finger base
 
           if (hand.confidence > 0.9 && thumbTip && indexTip) {
             if (hand.handedness === "Left") {
@@ -177,6 +228,49 @@
               metrics.rightHandPinch.calced = true;
               metrics.rightHandPinch.twoD = calculate2DDistance(thumbTip, indexTip);
               metrics.rightHandPinch.threeD = calculateHand3DDistance(thumbTip, indexTip);
+            }
+          }
+          
+          // Calculate hand back metrics when all required points are available
+          if (hand.confidence > 0.9 && wrist && middleBase && indexBase && pinkyBase) {
+            // Calculate a vector normal to the palm plane using cross product
+            // First we create vectors along the palm
+            const v1 = {
+              x: indexBase.x3D - wrist.x3D,
+              y: indexBase.y3D - wrist.y3D,
+              z: indexBase.z3D - wrist.z3D
+            };
+            
+            const v2 = {
+              x: pinkyBase.x3D - wrist.x3D,
+              y: pinkyBase.y3D - wrist.y3D,
+              z: pinkyBase.z3D - wrist.z3D
+            };
+
+            
+            // Cross product gives normal vector to palm
+            const normal = {
+              x: v1.y * v2.z - v1.z * v2.y,
+              y: v1.z * v2.x - v1.x * v2.z,
+              z: v1.x * v2.y - v1.y * v2.x
+            };
+            
+            // Normalize the vector (z component is what we care about)
+            const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+            normal.z = normal.z / length;
+            
+            // The normal.z value indicates palm orientation:
+            // Positive: palm facing camera
+            // Negative: back of hand facing camera
+            // Range is roughly -1 to 1
+            
+            if (hand.handedness === "Left") {
+              metrics.leftHandBack.calced = true;
+              metrics.leftHandBack.orientation = normal.z;
+            } else if (hand.handedness === "Right") {
+              metrics.rightHandBack.calced = true;
+              // Invert so positive means back of hand to camera
+              metrics.rightHandBack.orientation = - normal.z;
             }
           }
         }
@@ -284,14 +378,20 @@
         const metric = metrics[key];
         if (metric.calced) {
           metricStr = "";
-          if (metric.twoD) {
+          if (metric.twoD != null) {
             metricStr += "2D: " + Math.round(metric.twoD) + "; ";
           }
-          if (metric.threeD) {
-            metricStr += "3D: " + Math.round(metric.threeD);
+          if (metric.threeD != null) {
+            metricStr += "3D: " + Math.round(metric.threeD) + "; ";
           }
-          if (metric.ratio) {
-            metricStr += "Ratio: " + Math.round(metric.ratio);
+          if (metric.ratio != null) {
+            metricStr += "Ratio: " + Math.round(metric.ratio) + "; ";
+          }
+          if (metric.orientation != null) {
+            metricStr += "Orient: " + metric.orientation.toFixed(2) + "; ";
+          }
+          if (metric.value != null) {
+            metricStr += "Value: " + metric.value.toFixed(2);
           }
           metricStrs.push(metric.title + ": " + metricStr);
         } else {
@@ -407,29 +507,6 @@
           text(countdownSeconds, width / 2, height / 2 + 20);
           pop();
         }
-      } else if (!gameState.playing) {
-        push();
-        // Level intro screen - minimal
-        fill(255);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        text("Level " + gameState.level, width / 2, height / 2 - 40);
-        
-        // Display description based on level
-        textSize(20);
-        
-        if (gameState.level === 1) {
-          text("Raise your hands above your head", width / 2, height / 2 + 10);
-        } else if (gameState.level === 2) {
-          text("Pinch your left thumb and index finger", width / 2, height / 2 + 10);
-        } else if (gameState.level === 3) {
-          text("Open your mouth and bring your wrists together", width / 2, height / 2 + 10);
-        }
-        
-        // Start instructions
-        textSize(18);
-        text("Press any key to begin", width / 2, height / 2 + 60);
-        pop();
       } else {
         // Get level from array (0-indexed)
         const levelIndex = gameState.level - 1;
