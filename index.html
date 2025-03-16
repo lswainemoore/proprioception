@@ -11,19 +11,589 @@
     body {
       margin: 0;
       padding: 0;
+      background-color: #111;
+      font-family: 'Courier New', monospace;
+      color: #0cf;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* App container - fills viewport */
+    #app-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
     }
-
+    
+    /* Canvas container for responsive sizing */
+    #canvas-container {
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+      aspect-ratio: 4/3;
+      overflow: hidden;
+      border: 2px solid #0cf;
+      box-shadow: 0 0 20px rgba(0, 204, 255, 0.5);
+      border-radius: 5px;
+    }
+    
     canvas {
       display: block;
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Dashboard frame container */
+    #dashboard-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* Allow clicks to pass through to canvas */
+    }
+    
+    /* Decorative dashboard elements */
+    .frame-corner {
+      position: absolute;
+      width: 5%;
+      height: 5%;
+      max-width: 50px;
+      max-height: 50px;
+      border: 2px solid #0cf;
+      z-index: 10;
+      opacity: 0.8;
+    }
+    
+    .top-left {
+      top: -2px;
+      left: -2px;
+      border-right: none;
+      border-bottom: none;
+    }
+    
+    .top-right {
+      top: -2px;
+      right: -2px;
+      border-left: none;
+      border-bottom: none;
+    }
+    
+    .bottom-left {
+      bottom: -2px;
+      left: -2px;
+      border-right: none;
+      border-top: none;
+    }
+    
+    .bottom-right {
+      bottom: -2px;
+      right: -2px;
+      border-left: none;
+      border-top: none;
+    }
+    
+    /* UI Overlays */
+    .ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none; /* By default overlays don't capture clicks */
+      z-index: 20;
+      opacity: 0; /* Hidden by default */
+      transition: opacity 0.3s ease;
+    }
+    
+    #mode-selection-overlay {
+      flex-direction: column;
+      background-color: rgba(0, 0, 0, 0.7);
+      pointer-events: auto; /* Enable interactions */
+    }
+    
+    #game-title {
+      color: #0cf;
+      font-size: clamp(28px, 8vw, 42px);
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    
+    #mode-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    
+    .mode-button {
+      background: transparent;
+      border: 2px solid #0cf;
+      color: white;
+      padding: 10px 20px;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(14px, 3vw, 20px);
+      border-radius: 8px;
+      min-width: 160px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .mode-button:hover {
+      background-color: rgba(0, 204, 255, 0.1);
+    }
+    
+    .mode-button::before, .mode-button::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border: 1px solid #0cf;
+    }
+    
+    .mode-button::before {
+      top: 0;
+      left: 0;
+      border-right: none;
+      border-bottom: none;
+    }
+    
+    .mode-button::after {
+      bottom: 0;
+      right: 0;
+      border-left: none;
+      border-top: none;
+    }
+    
+    #mode-instruction {
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 30px;
+      font-size: clamp(12px, 3vw, 16px);
+    }
+    
+    /* Error message overlay */
+    #error-overlay {
+      pointer-events: none;
+    }
+    
+    #error-box {
+      border: 2px solid rgba(255, 150, 0, 0.8);
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 20px 30px;
+      border-radius: 5px;
+      text-align: center;
+      max-width: 80%;
+    }
+    
+    #error-message {
+      color: rgb(255, 200, 100);
+      font-size: clamp(16px, 4vw, 22px);
+      margin: 0;
+    }
+    
+    /* Hint overlay */
+    #hint-overlay {
+      pointer-events: none;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 15%;
+    }
+    
+    #hint-box {
+      border: 1px solid rgba(255, 255, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 10px 20px;
+      border-radius: 5px;
+      max-width: 80%;
+      position: relative;
+    }
+    
+    #hint-box::before, #hint-box::after {
+      content: '';
+      position: absolute;
+      width: 5px;
+      height: 5px;
+    }
+    
+    #hint-box::before {
+      top: 0;
+      left: 0;
+      border-top: 1px solid rgba(255, 255, 0, 0.7);
+      border-left: 1px solid rgba(255, 255, 0, 0.7);
+    }
+    
+    #hint-box::after {
+      top: 0;
+      right: 0;
+      border-top: 1px solid rgba(255, 255, 0, 0.7);
+      border-right: 1px solid rgba(255, 255, 0, 0.7);
+    }
+    
+    #hint-text {
+      color: rgb(255, 255, 100);
+      font-size: clamp(14px, 3vw, 16px);
+      text-align: center;
+      margin: 0;
+    }
+    
+    /* Loading screen styles */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0a1012;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: opacity 0.5s ease-out;
+    }
+    
+    #loading-text {
+      font-family: 'Courier New', monospace;
+      font-size: clamp(18px, 5vw, 24px);
+      color: #0cf;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    #loading-spinner {
+      width: clamp(40px, 10vw, 60px);
+      height: clamp(40px, 10vw, 60px);
+      border: 3px solid rgba(0, 204, 255, 0.1);
+      border-radius: 50%;
+      border-top-color: #0cf;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    /* Game status indicators */
+    #level-indicator {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background-color: rgba(0, 0, 0, 0.6);
+      border: 1px solid #0cf;
+      padding: 5px 15px;
+      border-radius: 5px;
+      z-index: 15;
+      pointer-events: none;
+    }
+    
+    #level-text {
+      color: #0cf;
+      font-size: clamp(14px, 3vw, 20px);
+      margin: 0;
+    }
+    
+    #timer {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #0cf;
+      font-size: clamp(14px, 3vw, 20px);
+      z-index: 15;
+      pointer-events: none;
+    }
+    
+    /* Game completion screen */
+    #complete-overlay {
+      background-color: rgba(0, 0, 0, 0.85);
+      flex-direction: column;
+    }
+    
+    #complete-content {
+      border: 2px solid #0cf;
+      background-color: rgba(0, 20, 40, 0.8);
+      border-radius: 10px;
+      padding: 30px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow-y: auto;
+    }
+    
+    #complete-title {
+      color: #0cf;
+      font-size: clamp(20px, 5vw, 28px);
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 20px;
+    }
+    
+    #scores-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    
+    #scores-table th {
+      color: #0cf;
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid rgba(0, 204, 255, 0.5);
+    }
+    
+    #scores-table td {
+      color: white;
+      padding: 10px;
+    }
+    
+    #scores-table tr.total-row {
+      border-top: 1px solid rgba(0, 204, 255, 0.5);
+    }
+    
+    #scores-table tr.total-row td {
+      color: #0cf;
+      font-weight: bold;
+    }
+    
+    #restart-button {
+      background: transparent;
+      border: 2px solid #0cf;
+      color: white;
+      padding: 10px 20px;
+      font-family: 'Courier New', monospace;
+      font-size: clamp(14px, 3vw, 16px);
+      border-radius: 8px;
+      margin-top: 20px;
+      cursor: pointer;
+      width: 100%;
+    }
+    
+    #restart-button:hover {
+      background-color: rgba(0, 204, 255, 0.1);
+    }
+    
+    /* Progress bar */
+    #progress-container {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      max-width: 700px;
+      height: 24px; /* Increased height */
+      background-color: rgba(0, 60, 80, 0.4);
+      border-radius: 4px; /* Increased to match thicker bar */
+      overflow: visible; /* Allow the securing text to be visible outside container */
+      z-index: 15;
+    }
+    
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: rgba(0, 204, 255, 0.8);
+      border-radius: 4px; /* Increased to match container */
+      position: relative;
+    }
+    
+    #locking-progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 0%;
+      background-color: rgba(0, 255, 200, 0.8);
+      border-radius: 4px; /* Increased to match container */
+      box-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+      opacity: 0;
+      transition: width 0s linear;
+    }
+    
+    /* Securing text box */
+    #securing-box {
+      position: absolute;
+      padding: 0;
+      color: white;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      white-space: nowrap;
+      opacity: 0;
+      left: 50%;
+      top: 50%; /* Center vertically in progress bar */
+      transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+      z-index: 16;
+      text-align: center;
+      pointer-events: none;
+      text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 0 5px rgba(0, 204, 255, 0.8); /* Enhanced text shadow for better visibility */
+      letter-spacing: 1px;
+      font-weight: bold;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Countdown overlay */
+    #countdown-overlay {
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 30;
+    }
+    
+    #countdown-box {
+      text-align: center;
+    }
+    
+    #level-countdown {
+      color: #0cf;
+      font-size: clamp(16px, 4vw, 24px);
+      margin-bottom: 20px;
+    }
+    
+    #countdown-number {
+      width: clamp(60px, 20vw, 120px);
+      height: clamp(60px, 20vw, 120px);
+      background-color: rgba(0, 20, 40, 0.8);
+      border: 2px solid #0cf;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: clamp(36px, 10vw, 60px);
+      color: white;
+      position: relative;
+      margin: 0 auto;
+    }
+    
+    #countdown-number::before, #countdown-number::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+    }
+    
+    #countdown-number::before {
+      top: 0;
+      left: 0;
+      border-top: 2px solid #0cf;
+      border-left: 2px solid #0cf;
+    }
+    
+    #countdown-number::after {
+      bottom: 0;
+      right: 0;
+      border-bottom: 2px solid #0cf;
+      border-right: 2px solid #0cf;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      #mode-buttons {
+        flex-direction: column;
+      }
+      
+      #canvas-container {
+        max-height: 80vh;
+      }
+      
+      #level-indicator, #timer {
+        font-size: 14px;
+        padding: 5px;
+      }
     }
   </style>
 </head>
 
 <body>
+  <!-- App container with responsive layout -->
+  <div id="app-container">
+    <!-- Loading screen overlay -->
+    <div id="loading-screen">
+      <div id="loading-text">INITIALIZING SYSTEM</div>
+      <div id="loading-spinner"></div>
+    </div>
+    
+    <!-- Canvas container for responsive sizing -->
+    <div id="canvas-container"></div>
+    
+    <!-- Dashboard frame with corner decorations -->
+    <div id="dashboard-frame">
+      <div class="frame-corner top-left"></div>
+      <div class="frame-corner top-right"></div>
+      <div class="frame-corner bottom-left"></div>
+      <div class="frame-corner bottom-right"></div>
+    </div>
+    
+    <!-- Game UI elements -->
+    <div id="timer">0.0s</div>
+    <div id="level-indicator">
+      <p id="level-text">LEVEL 1 • Easy</p>
+    </div>
+    <div id="progress-container">
+      <div id="progress-bar"></div>
+      <div id="locking-progress"></div>
+      <div id="securing-box">SECURING...</div>
+    </div>
+    
+    <!-- Mode selection screen overlay -->
+    <div id="mode-selection-overlay" class="ui-overlay">
+      <div id="mode-selection-content">
+        <h1 id="game-title">PROPRIOCEPTION</h1>
+        <div id="mode-buttons">
+          <button id="standard-mode-btn" class="mode-button">STANDARD</button>
+          <button id="endless-mode-btn" class="mode-button">ENDLESS</button>
+        </div>
+        <p id="mode-instruction">SELECT MODE</p>
+      </div>
+    </div>
+    
+    <!-- Game completion overlay -->
+    <div id="complete-overlay" class="ui-overlay">
+      <div id="complete-content">
+        <h2 id="complete-title">ANALYSIS COMPLETE</h2>
+        <table id="scores-table">
+          <thead>
+            <tr>
+              <th>LEVEL</th>
+              <th>TIME</th>
+            </tr>
+          </thead>
+          <tbody id="scores-body">
+            <!-- Scores will be inserted here -->
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td>TOTAL</td>
+              <td id="total-score">0.0 sec.</td>
+            </tr>
+          </tfoot>
+        </table>
+        <button id="restart-button">INITIATE NEW SESSION</button>
+      </div>
+    </div>
+    
+    <!-- Error message overlay -->
+    <div id="error-overlay" class="ui-overlay">
+      <div id="error-box">
+        <p id="error-message">Relevant body parts not detected</p>
+      </div>
+    </div>
+    
+    <!-- Hint overlay -->
+    <div id="hint-overlay" class="ui-overlay">
+      <div id="hint-box">
+        <p id="hint-text">HINT: Try something different</p>
+      </div>
+    </div>
+    
+    <!-- Countdown overlay -->
+    <div id="countdown-overlay" class="ui-overlay">
+      <div id="countdown-box">
+        <p id="level-countdown"></p>
+        <div id="countdown-number">3</div>
+      </div>
+    </div>
+  </div>
   <script>
     let video;
     let handPose;
@@ -339,7 +909,9 @@
     }
 
     function setup() {
-      createCanvas(640, 480);
+      // Create canvas inside the canvas-container for proper positioning
+      const canvas = createCanvas(640, 480);
+      canvas.parent('canvas-container');
 
       // Create video and hide it
       video = createCapture(VIDEO, { flipped: true });
@@ -631,8 +1203,240 @@
       return hint;
     }
     
+    // DOM element references
+    let domElements = {
+      // Overlays
+      loadingScreen: null,
+      modeSelectionOverlay: null,
+      errorOverlay: null,
+      hintOverlay: null,
+      countdownOverlay: null,
+      completeOverlay: null,
+      
+      // UI Elements
+      timer: null,
+      levelIndicator: null,
+      levelText: null,
+      progressBar: null,
+      lockingProgress: null,
+      
+      // Mode Selection
+      standardModeBtn: null,
+      endlessModeBtn: null,
+      
+      // Countdown
+      levelCountdown: null,
+      countdownNumber: null,
+      
+      // Complete Screen
+      scoresBody: null,
+      totalScore: null,
+      restartButton: null,
+      
+      // Other
+      errorMessage: null,
+      hintText: null
+    };
+    
+    // Get references to DOM elements
+    function initializeDOMElements() {
+      // Overlays
+      domElements.loadingScreen = document.getElementById('loading-screen');
+      domElements.modeSelectionOverlay = document.getElementById('mode-selection-overlay');
+      domElements.errorOverlay = document.getElementById('error-overlay');
+      domElements.hintOverlay = document.getElementById('hint-overlay');
+      domElements.countdownOverlay = document.getElementById('countdown-overlay');
+      domElements.completeOverlay = document.getElementById('complete-overlay');
+      
+      // UI Elements
+      domElements.timer = document.getElementById('timer');
+      domElements.levelIndicator = document.getElementById('level-indicator');
+      domElements.levelText = document.getElementById('level-text');
+      domElements.progressContainer = document.getElementById('progress-container');
+      domElements.progressBar = document.getElementById('progress-bar');
+      domElements.lockingProgress = document.getElementById('locking-progress');
+      domElements.securingBox = document.getElementById('securing-box');
+      
+      // Mode Selection
+      domElements.standardModeBtn = document.getElementById('standard-mode-btn');
+      domElements.endlessModeBtn = document.getElementById('endless-mode-btn');
+      
+      // Countdown
+      domElements.levelCountdown = document.getElementById('level-countdown');
+      domElements.countdownNumber = document.getElementById('countdown-number');
+      
+      // Complete Screen
+      domElements.scoresBody = document.getElementById('scores-body');
+      domElements.totalScore = document.getElementById('total-score');
+      domElements.restartButton = document.getElementById('restart-button');
+      
+      // Other
+      domElements.errorMessage = document.getElementById('error-message');
+      domElements.hintText = document.getElementById('hint-text');
+      
+      // Add event listeners
+      domElements.standardModeBtn.addEventListener('click', () => {
+        startGame('standard');
+        startCountdown();
+      });
+      
+      domElements.endlessModeBtn.addEventListener('click', () => {
+        startGame('endless');
+        startCountdown();
+      });
+      
+      domElements.restartButton.addEventListener('click', () => {
+        restartGame();
+      });
+      
+      // Add key press event listener to document
+      document.addEventListener('keydown', keyPressed);
+    }
+    
+    // Show/hide UI overlays
+    function showOverlay(overlay) {
+      if (domElements[overlay]) {
+        domElements[overlay].style.opacity = '1';
+        domElements[overlay].style.pointerEvents = 'auto';
+      }
+    }
+    
+    function hideOverlay(overlay) {
+      if (domElements[overlay]) {
+        domElements[overlay].style.opacity = '0';
+        domElements[overlay].style.pointerEvents = 'none';
+      }
+    }
+    
+    // Hide loading screen
+    function hideLoading() {
+      if (domElements.loadingScreen) {
+        domElements.loadingScreen.style.opacity = '0';
+        setTimeout(() => {
+          domElements.loadingScreen.style.display = 'none';
+        }, 500);
+      }
+    }
+    
+    // Update the progress bar
+    function updateProgressBar(progress) {
+      if (domElements.progressBar) {
+        domElements.progressBar.style.width = `${progress * 100}%`;
+      }
+    }
+    
+    // Update the locking progress animation
+    function updateLockingProgress(visible, progress = 0) {
+      if (domElements.lockingProgress && domElements.securingBox) {
+        // Handle the green progress bar
+        domElements.lockingProgress.style.opacity = visible ? '1' : '0';
+        
+        // Apply the easing function to the progress for smoother animation
+        let easedProgress = progress;
+        if (progress < 0.2) {
+          // First 20% - accelerate quickly (quadratic ease-in)
+          easedProgress = (progress / 0.2) * (progress / 0.2) * 0.3;
+        } else {
+          // Remaining 80% - decelerate more gradually (cubic ease-out)
+          easedProgress = 0.3 + 0.7 * (1 - Math.pow(1 - ((progress - 0.2) / 0.8), 3));
+        }
+        
+        domElements.lockingProgress.style.width = `${easedProgress * 100}%`;
+        
+        // Handle the "SECURING..." text box
+        if (visible && progress > 0.15) {
+          // Make the box visible but keep it centered
+          domElements.securingBox.style.opacity = '1';
+        } else {
+          domElements.securingBox.style.opacity = '0';
+        }
+      }
+    }
+    
+    // Update timer display
+    function updateTimer(time) {
+      if (domElements.timer) {
+        domElements.timer.textContent = `${time}s`;
+      }
+    }
+    
+    // Update level indicator
+    function updateLevelIndicator(level, difficulty) {
+      if (domElements.levelText) {
+        domElements.levelText.textContent = `LEVEL ${level} • ${difficulty}`;
+      }
+    }
+    
+    // Update hint text
+    function updateHint(hint) {
+      if (domElements.hintText) {
+        domElements.hintText.textContent = `HINT: ${hint}`;
+      }
+    }
+    
+    // Update countdown display
+    function updateCountdown(level, seconds) {
+      if (domElements.levelCountdown && domElements.countdownNumber) {
+        domElements.levelCountdown.textContent = `LEVEL ${level}`;
+        domElements.countdownNumber.textContent = seconds;
+      }
+    }
+    
+    // Update game completion screen
+    function updateCompletionScreen() {
+      if (domElements.scoresBody && domElements.totalScore) {
+        // Clear existing scores
+        domElements.scoresBody.innerHTML = '';
+        
+        // Add each level's score
+        for (let level in gameState.scores) {
+          const row = document.createElement('tr');
+          
+          const levelCell = document.createElement('td');
+          levelCell.textContent = level;
+          
+          const scoreCell = document.createElement('td');
+          scoreCell.textContent = `${gameState.scores[level]} sec.`;
+          
+          row.appendChild(levelCell);
+          row.appendChild(scoreCell);
+          domElements.scoresBody.appendChild(row);
+        }
+        
+        // Update total score
+        domElements.totalScore.textContent = `${gameState.totalScore} sec.`;
+      }
+    }
+    
+    // Variable to track if we've already hidden the loading screen
+    let loadingHidden = false;
+    
     function draw() {
+      // Initialize DOM elements on first frame
+      if (!domElements.loadingScreen) {
+        initializeDOMElements();
+        
+        // Show mode selection screen
+        showOverlay('modeSelectionOverlay');
+      }
+      
+      // Hide loading screen after a short delay
+      if (!loadingHidden && millis() > 2000) {
+        hideLoading();
+        loadingHidden = true;
+      }
+      
+      // Clear with dark background
+      background(20, 30, 40);
+      
+      // Draw video with a slight processing effect
+      push();
+      tint(200, 220, 255, 240); // Slightly blue tint
       image(video, 0, 0, width, height);
+      pop();
+      
+      // Add sci-fi grid overlay
+      drawScienceOverlay();
 
       const metrics = computeMetrics();
 
@@ -656,171 +1460,87 @@
       // Check if we should show a hint (30 seconds on a level)
       if (gameState.playing && !gameState.hintShown) {
         const levelTimeSeconds = (millis() - gameState.levelStartTime) / 1000;
-        if (levelTimeSeconds > 30) {
+        if (levelTimeSeconds > 15) {
           gameState.showHint = true;
           gameState.hintShown = true;
         }
       }
 
-      // show game state
+      // Handle game state with HTML overlays
       if (!gameState.started) {
+        // Show mode selection screen
         if (gameState.menuScreen) {
-          // Mode selection screen
-          push();
-          fill(255);
-          textSize(42);
-          textAlign(CENTER, CENTER);
-          text("PROPRIOCEPTION", width / 2, height / 2 - 80);
-          
-          // Draw mode selection buttons
-          const buttonWidth = 160;
-          const buttonHeight = 50;
-          const buttonSpacing = 20;
-          const buttonY = height / 2 + 20;
-          
-          // Standard mode button
-          const standardX = width / 2 - buttonWidth - buttonSpacing/2;
-          fill(80, 80, 80);
-          stroke(255);
-          strokeWeight(2);
-          rect(standardX, buttonY, buttonWidth, buttonHeight, 8);
-          
-          // Endless mode button
-          const endlessX = width / 2 + buttonSpacing/2;
-          fill(80, 80, 80);
-          stroke(255);
-          strokeWeight(2);
-          rect(endlessX, buttonY, buttonWidth, buttonHeight, 8);
-          
-          // Button text
-          noStroke();
-          fill(255);
-          textSize(20);
-          textAlign(CENTER, CENTER);
-          text("STANDARD", standardX + buttonWidth/2, buttonY + buttonHeight/2);
-          text("ENDLESS", endlessX + buttonWidth/2, buttonY + buttonHeight/2);
-          
-          // Instructions
-          textSize(16);
-          fill(200, 200, 200);
-          text("Click to select game mode", width / 2, buttonY + buttonHeight + 30);
-          pop();
-          
-          // Check for button clicks
-          if (mouseIsPressed) {
-            if (mouseX > standardX && mouseX < standardX + buttonWidth &&
-                mouseY > buttonY && mouseY < buttonY + buttonHeight) {
-              // Standard mode selected
-              startGame('standard');
-              startCountdown();
-            } else if (mouseX > endlessX && mouseX < endlessX + buttonWidth &&
-                     mouseY > buttonY && mouseY < buttonY + buttonHeight) {
-              // Endless mode selected
-              startGame('endless');
-              startCountdown();
-            }
-          }
+          // Mode selection is now handled by the HTML overlay and event listeners
+          showOverlay('modeSelectionOverlay');
         } else {
-          // Title and start screen - more understated
-          push();
-          fill(255);
-          textSize(42);
-          textAlign(CENTER, CENTER);
-          text("PROPRIOCEPTION", width / 2, height / 2 - 30);
-          
-          // Instructions - simple white text
-          textSize(24);
-          text("Press any key to start", width / 2, height / 2 + 40);
-          
-          // Debug info - smaller and less obtrusive
-          // textSize(14);
-          // fill(180, 180, 180);
-          // text("Press 'D' to toggle debug view", width / 2, height - 20);
-          pop();
+          // This is the initial title screen, also using the mode selection overlay
+          showOverlay('modeSelectionOverlay');
         }
       } else if (gameState.ended) {
-        // Game over screen - more understated
-        push();
-        fill(255);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        text("Game Complete", width / 2, height / 2 - 80);
+        // Game complete screen - use HTML overlay
+        updateCompletionScreen();
+        showOverlay('completeOverlay');
+        hideOverlay('modeSelectionOverlay');
         
-        // Display scores in a clean, minimal format
-        noStroke();
-        
-        textSize(20);
-        textAlign(RIGHT, CENTER);
-        text("LEVEL", width/2 - 100, height/2 - 40);
-        text("TIME", width/2 + 100, height/2 - 40);
-        
-        // Display scores for each level
-        fill(255);
-        textSize(18);
-        let scoreY = height / 2;
-        
-        for (let level in gameState.scores) {
-          textAlign(RIGHT, CENTER);
-          text(level, width/2 - 100, scoreY);
-          textAlign(LEFT, CENTER);
-          text(gameState.scores[level] + " sec.", width/2 + 20, scoreY);
-          scoreY += 26;
-        }
-        
-        // Display total score - aligned with level scores
-        fill(255);
-        textSize(18);
-        textAlign(RIGHT, CENTER);
-        text("TOTAL", width/2 - 100, scoreY);
-        textAlign(LEFT, CENTER);
-        text(gameState.totalScore + " sec.", width/2 + 20, scoreY);
-        
-        // Add instruction to press key to restart (positioned at fixed distance from bottom)
-        textSize(18);
-        text("Press any key to play again", width / 2, height - 40);
-        pop();
+        // Hide other UI elements
+        if (domElements.levelIndicator) domElements.levelIndicator.style.display = 'none';
+        if (domElements.timer) domElements.timer.style.display = 'none';
+        if (domElements.progressContainer) domElements.progressContainer.style.display = 'none';
       } else if (gameState.countdown) {
-        // Handle countdown
+        // Handle countdown with HTML overlay
         const elapsedTime = millis() - gameState.countdownStartTime;
         const countdownSeconds = 3 - Math.floor(elapsedTime / 1000);
         
         if (countdownSeconds <= 0) {
           // Countdown finished, start level
           gameState.countdown = false;
+          hideOverlay('countdownOverlay');
           startLevel();
         } else {
-          push();
-          // Level title - simple, clean
-          fill(255);
-          textSize(24);
-          textAlign(CENTER, CENTER);
+          // Get current level difficulty
+          let difficulty = "Easy";
+          let currentMetricIds = [];
           
-          // Just show the level number, no titles
-          text("Level " + gameState.level, width / 2, height / 2 - 40);
+          if (gameState.mode === 'standard') {
+            const levelIndex = gameState.level - 1;
+            currentMetricIds = levels[levelIndex].metricIds;
+          } else if (gameState.mode === 'endless' && currentEndlessLevel) {
+            currentMetricIds = currentEndlessLevel.metricIds;
+          }
+          
+          // Set difficulty based on number of metrics
+          if (currentMetricIds.length === 2) {
+            difficulty = "Medium";
+          } else if (currentMetricIds.length >= 3) {
+            difficulty = "Hard";
+          }
           
           // Make sure we have a current endless level if needed
           if (gameState.mode === 'endless' && !currentEndlessLevel && gameState.level === 1) {
             currentEndlessLevel = getNextEndlessLevel();
           }
           
-          // Countdown number - simple, no effects
-          textSize(60);
-          text(countdownSeconds, width / 2, height / 2 + 20);
-          pop();
+          // Update countdown display in HTML
+          updateCountdown(gameState.level, countdownSeconds);
+          showOverlay('countdownOverlay');
+          hideOverlay('modeSelectionOverlay');
         }
       } else {
         // Get the current level and progress function based on mode
         let progressFunction;
         let rawProgress;
+        let currentMetricIds = [];
         
         if (gameState.mode === 'standard') {
           // Standard mode - get level from predefined array
           const levelIndex = gameState.level - 1;
           const level = levels[levelIndex];
           progressFunction = level.progressFunction;
+          currentMetricIds = level.metricIds;
         } else if (gameState.mode === 'endless') {
           // Endless mode - use current endless level
           progressFunction = currentEndlessLevel.progressFunction;
+          currentMetricIds = currentEndlessLevel.metricIds;
         }
         
         // Calculate progress
@@ -853,65 +1573,109 @@
             gameState.lockingIn = false;
           }
         }
-        // Display level and current time - minimal design
+        
+        // Calculate current time for display
         const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
         
-        // Get current level difficulty
+        // Update DOM elements for playing state
+        
+        // Get difficulty for level indicator
         let difficulty = "Easy";
-        let currentMetricIds = [];
-        
-        if (gameState.mode === 'standard') {
-          const levelIndex = gameState.level - 1;
-          currentMetricIds = levels[levelIndex].metricIds;
-        } else if (gameState.mode === 'endless' && currentEndlessLevel) {
-          currentMetricIds = currentEndlessLevel.metricIds;
-        }
-        
-        // Set difficulty based on number of metrics
         if (currentMetricIds.length === 2) {
           difficulty = "Medium";
         } else if (currentMetricIds.length >= 3) {
           difficulty = "Hard";
         }
         
-        // Simple text without box for timer - left side
-        push();
-        fill(255);
-        textSize(20);
-        textAlign(LEFT, TOP);
-        text(currentTime + "s", 20, 20);
-        
-        // Level indicator with difficulty in top right
-        textAlign(RIGHT, TOP);
-        text("Level " + gameState.level + " • " + difficulty, width - 20, 20);
-        pop();
+        // Update level indicator and timer
+        updateLevelIndicator(gameState.level, difficulty);
+        updateTimer(currentTime);
         
         if (progress != null) {
-          // Show progress bar
-          textSize(32);
-          textAlign(CENTER, CENTER);
-          drawProgressBar(progress);
+          // Update progress bar
+          updateProgressBar(progress);
+          
+          // Make sure UI elements are visible
+          if (domElements.levelIndicator) domElements.levelIndicator.style.display = 'block';
+          if (domElements.timer) domElements.timer.style.display = 'block';
+          if (domElements.progressContainer) domElements.progressContainer.style.display = 'block';
+          
+          // Hide error overlay
+          hideOverlay('errorOverlay');
+          
+          // Handle locking in animation
+          if (gameState.lockingIn) {
+            const lockInElapsed = millis() - gameState.lockInStartTime;
+            const lockInProgress = Math.min(1, lockInElapsed / gameState.lockInDuration);
+            updateLockingProgress(true, lockInProgress);
+          } else {
+            updateLockingProgress(false);
+          }
           
           // Show hint if needed
           if (gameState.showHint) {
-            push();
-            fill(255, 255, 0);
-            textSize(24);
-            textAlign(CENTER, CENTER);
-            text("Hint: " + getHintForCurrentLevel(), width / 2, height - 80);
-            pop();
+            updateHint(getHintForCurrentLevel());
+            showOverlay('hintOverlay');
+          } else {
+            hideOverlay('hintOverlay');
           }
         } else {
-          fill(255);
-          textSize(32);
-          textAlign(CENTER, CENTER);
-          text("Relevant body parts not detected", width / 2, height / 2);
+          // Show error message for missing body parts
+          showOverlay('errorOverlay');
         }
+        
+        // Hide other overlays
+        hideOverlay('modeSelectionOverlay');
+        hideOverlay('countdownOverlay');
+        hideOverlay('completeOverlay');
       }
     }
 
-    // Removed overlay functions to fix visual issues
+    // Remove canvas drawing functions that have been replaced by HTML UI
     
+    // Draw a sci-fi grid overlay
+    function drawScienceOverlay() {
+      push();
+      
+      // Draw subtle grid
+      stroke(0, 204, 255, 30);
+      strokeWeight(1);
+      
+      // Horizontal grid lines
+      for (let y = 0; y < height; y += 40) {
+        line(0, y, width, y);
+      }
+      
+      // Vertical grid lines
+      for (let x = 0; x < width; x += 40) {
+        line(x, 0, x, height);
+      }
+      
+      // Draw corner brackets
+      stroke(0, 204, 255, 100);
+      strokeWeight(2);
+      
+      // Top-left corner
+      line(10, 10, 30, 10);
+      line(10, 10, 10, 30);
+      
+      // Top-right corner
+      line(width - 30, 10, width - 10, 10);
+      line(width - 10, 10, width - 10, 30);
+      
+      // Bottom-left corner
+      line(10, height - 10, 30, height - 10);
+      line(10, height - 30, 10, height - 10);
+      
+      // Bottom-right corner
+      line(width - 30, height - 10, width - 10, height - 10);
+      line(width - 10, height - 30, width - 10, height - 10);
+      
+      // Cleaner interface - removed measurement labels
+      
+      pop();
+    }
+
     function drawProgressBar(progress) {
       const barWidth = 300;
       const barHeight = 16; // Made thicker (was 8)
@@ -920,14 +1684,30 @@
 
       push();
       
+      // Tech border around progress bar
+      stroke(0, 204, 255, 100);
+      strokeWeight(1);
+      noFill();
+      rect(barX - 5, barY - 5, barWidth + 10, barHeight + 10, 6);
+      
+      // Add some tech lines
+      line(barX - 20, barY + barHeight/2, barX - 10, barY + barHeight/2);
+      line(barX + barWidth + 10, barY + barHeight/2, barX + barWidth + 20, barY + barHeight/2);
+      
       // Draw background
       noStroke();
-      fill(255, 255, 255, 40);
+      fill(0, 60, 80, 160);
       rect(barX, barY, barWidth, barHeight, 4);
 
-      // Draw the progress bar - simple, modern
-      fill(255);
+      // Draw the progress bar with sci-fi glow
+      fill(0, 204, 255, 200);
       rect(barX, barY, barWidth * progress, barHeight, 4);
+      
+      // Add scan lines effect to the progress bar
+      for (let y = barY + 2; y < barY + barHeight; y += 4) {
+        fill(255, 255, 255, 30);
+        rect(barX, y, barWidth * progress, 1);
+      }
       
       // Draw lock-in animation if actively locking in
       if (gameState.lockingIn) {
@@ -947,10 +1727,48 @@
         // Calculate the width of the sliding green bar
         const greenBarWidth = barWidth * lockInProgress;
         
-        // Draw the sliding green bar on top of the white progress bar
+        // Draw the sliding green bar on top of the progress bar
         noStroke();
-        fill(50, 220, 50); // Bright green
+        fill(0, 255, 200, 220); // Cyan-green glow color
         rect(barX, barY, greenBarWidth, barHeight, 4);
+        
+        // Add glow effect
+        drawingContext.shadowBlur = 10;
+        drawingContext.shadowColor = "rgba(0, 255, 200, 0.5)";
+        rect(barX, barY, greenBarWidth, barHeight, 4);
+        drawingContext.shadowBlur = 0;
+        
+        // Add tech lines to lock-in bar
+        stroke(255, 255, 255, 100);
+        strokeWeight(1);
+        for (let x = barX + 10; x < barX + greenBarWidth; x += 20) {
+          line(x, barY, x, barY + barHeight);
+        }
+        
+        // Add "SECURING" text with proper positioning and style
+        if (lockInProgress > 0.15) {
+          // Draw a small tech box around the text
+          noFill();
+          stroke(0, 204, 255, 150);
+          strokeWeight(1);
+          const textBoxX = barX + greenBarWidth + 8;
+          const textBoxY = barY - 2;
+          const textBoxWidth = 85;
+          const textBoxHeight = barHeight + 4;
+          rect(textBoxX, textBoxY, textBoxWidth, textBoxHeight, 3);
+          
+          // Add small tech lines
+          const lineLength = 5;
+          line(textBoxX - lineLength, textBoxY + textBoxHeight/2, textBoxX, textBoxY + textBoxHeight/2);
+          
+          // Add text
+          noStroke();
+          fill(255, 255, 255, 230);
+          textSize(12);
+          textFont('Courier New');
+          textAlign(CENTER, CENTER);
+          text("SECURING...", textBoxX + textBoxWidth/2, textBoxY + textBoxHeight/2);
+        }
       }
       
       pop();
@@ -1135,6 +1953,18 @@
       gameState.lockingIn = false;
       gameState.lockInStartTime = 0;
       currentEndlessLevel = null;
+      
+      // Update UI
+      if (domElements.levelIndicator) domElements.levelIndicator.style.display = 'none';
+      if (domElements.timer) domElements.timer.style.display = 'none';
+      if (domElements.progressContainer) domElements.progressContainer.style.display = 'none';
+      
+      // Show mode selection
+      hideOverlay('countdownOverlay');
+      hideOverlay('errorOverlay');
+      hideOverlay('hintOverlay');
+      hideOverlay('completeOverlay');
+      showOverlay('modeSelectionOverlay');
     }
 
     function startGame(mode) {
@@ -1146,6 +1976,9 @@
       if (mode === 'endless' && gameState.endlessLevels.length === 0) {
         gameState.endlessLevels = generateAllEndlessLevels();
       }
+      
+      // Hide mode selection
+      hideOverlay('modeSelectionOverlay');
     }
 
     function endGame() {
@@ -1157,6 +1990,15 @@
       
       gameState.playing = false; // Make sure playing is set to false
       gameState.ended = true;
+      
+      // Update completion screen
+      updateCompletionScreen();
+      showOverlay('completeOverlay');
+      
+      // Hide game UI
+      if (domElements.levelIndicator) domElements.levelIndicator.style.display = 'none';
+      if (domElements.timer) domElements.timer.style.display = 'none';
+      if (domElements.progressContainer) domElements.progressContainer.style.display = 'none';
     }
 
     function startLevel() {
@@ -1168,11 +2010,52 @@
       gameState.currentHint = null; // Reset hint for new level
       gameState.lockingIn = false;  // Reset lock-in state
       gameState.lockInStartTime = 0;
+      
+      // Show game UI
+      if (domElements.levelIndicator) domElements.levelIndicator.style.display = 'block';
+      if (domElements.timer) domElements.timer.style.display = 'block';
+      if (domElements.progressContainer) domElements.progressContainer.style.display = 'block';
+      
+      // Reset progress indicators
+      updateProgressBar(0);
+      updateLockingProgress(false);
+      
+      // Hide overlays
+      hideOverlay('countdownOverlay');
+      hideOverlay('hintOverlay');
     }
 
     function startCountdown() {
       gameState.countdown = true;
       gameState.countdownStartTime = millis();
+      
+      // Hide other overlays and show countdown
+      showOverlay('countdownOverlay');
+      hideOverlay('modeSelectionOverlay');
+      hideOverlay('errorOverlay');
+      hideOverlay('hintOverlay');
+      hideOverlay('completeOverlay');
+      
+      // Get difficulty for level display
+      let difficulty = "Easy";
+      let currentMetricIds = [];
+      
+      if (gameState.mode === 'standard') {
+        const levelIndex = gameState.level - 1;
+        currentMetricIds = levels[levelIndex].metricIds;
+      } else if (gameState.mode === 'endless' && currentEndlessLevel) {
+        currentMetricIds = currentEndlessLevel.metricIds;
+      }
+      
+      // Set difficulty based on number of metrics
+      if (currentMetricIds.length === 2) {
+        difficulty = "Medium";
+      } else if (currentMetricIds.length >= 3) {
+        difficulty = "Hard";
+      }
+      
+      // Update countdown display
+      updateCountdown(gameState.level, 3);
     }
 
     function nextLevel() {
