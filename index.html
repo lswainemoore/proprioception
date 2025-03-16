@@ -43,7 +43,9 @@
       countdownStartTime: 0,
       levelStartTime: 0,
       scores: {},
-      totalScore: 0
+      totalScore: 0,
+      progressHistory: [], // Array to store recent progress values
+      progressHistorySize: 5 // Number of frames to average
     };
 
     let levels = [
@@ -433,7 +435,12 @@
         const levelIndex = gameState.level - 1;
         const level = levels[levelIndex];
         const progressFunction = level.progressFunction;
-        const progress = progressFunction(metrics);
+        const rawProgress = progressFunction(metrics);
+        
+        // Apply smoothing to progress value
+        const smoothedProgress = smoothProgress(rawProgress);
+        const progress = smoothedProgress;
+        
         if (progress >= 1) {
           if (levelIndex < levels.length - 1) {
             nextLevel();
@@ -615,6 +622,35 @@
       }
     }
 
+    function smoothProgress(rawProgress) {
+      // Handle null value
+      if (rawProgress === null) {
+        gameState.progressHistory = []; // Clear history when detection is lost
+        return null;
+      }
+      
+      // Add current value to history
+      gameState.progressHistory.push(rawProgress);
+      
+      // Limit history size
+      if (gameState.progressHistory.length > gameState.progressHistorySize) {
+        gameState.progressHistory.shift(); // Remove oldest value
+      }
+      
+      // Calculate weighted average (more recent values have more weight)
+      let totalWeight = 0;
+      let weightedSum = 0;
+      
+      for (let i = 0; i < gameState.progressHistory.length; i++) {
+        // Weight increases with index (newer values get higher weights)
+        const weight = i + 1;
+        weightedSum += gameState.progressHistory[i] * weight;
+        totalWeight += weight;
+      }
+      
+      return weightedSum / totalWeight;
+    }
+    
     function resetGame() {
       gameState.started = false;
       gameState.level = 1;
@@ -623,6 +659,7 @@
       gameState.playing = false;
       gameState.scores = {};
       gameState.totalScore = 0;
+      gameState.progressHistory = [];
     }
 
     function startGame() {
@@ -643,6 +680,7 @@
     function startLevel() {
       gameState.playing = true;
       gameState.levelStartTime = millis();
+      gameState.progressHistory = []; // Reset progress history for new level
     }
 
     function startCountdown() {
