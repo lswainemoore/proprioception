@@ -1,0 +1,511 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #111;
+  font-family: "Courier New", monospace;
+  color: #0cf;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* App container - fills viewport */
+#app-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Canvas container for responsive sizing */
+#canvas-container {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  border: 2px solid #0cf;
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.5);
+  border-radius: 5px;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Dashboard frame container */
+#dashboard-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Allow clicks to pass through to canvas */
+}
+
+/* Decorative dashboard elements */
+.frame-corner {
+  position: absolute;
+  width: 5%;
+  height: 5%;
+  max-width: 50px;
+  max-height: 50px;
+  border: 2px solid #0cf;
+  z-index: 10;
+  opacity: 0.8;
+}
+
+.top-left {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.top-right {
+  top: -2px;
+  right: -2px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.bottom-left {
+  bottom: -2px;
+  left: -2px;
+  border-right: none;
+  border-top: none;
+}
+
+.bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+
+/* UI Overlays */
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  /* By default overlays don't capture clicks */
+  z-index: 20;
+  opacity: 0;
+  /* Hidden by default */
+  transition: opacity 0.3s ease;
+}
+
+#mode-selection-overlay {
+  flex-direction: column;
+  background-color: rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+  /* Enable interactions */
+}
+
+#game-title {
+  color: #0cf;
+  font-size: clamp(28px, 8vw, 42px);
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+#mode-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.mode-button {
+  background: transparent;
+  border: 2px solid #0cf;
+  color: white;
+  padding: 10px 20px;
+  font-family: "Courier New", monospace;
+  font-size: clamp(14px, 3vw, 20px);
+  border-radius: 8px;
+  min-width: 160px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.mode-button:hover {
+  background-color: rgba(0, 204, 255, 0.1);
+}
+
+.mode-button::before,
+.mode-button::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #0cf;
+}
+
+.mode-button::before {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+.mode-button::after {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+}
+
+#mode-instruction {
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 30px;
+  font-size: clamp(12px, 3vw, 16px);
+}
+
+/* Error message overlay */
+#error-overlay {
+  pointer-events: none;
+}
+
+#error-box {
+  border: 2px solid rgba(255, 150, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 20px 30px;
+  border-radius: 5px;
+  text-align: center;
+  max-width: 80%;
+}
+
+#error-message {
+  color: rgb(255, 200, 100);
+  font-size: clamp(16px, 4vw, 22px);
+  margin: 0;
+}
+
+/* Hint overlay */
+#hint-overlay {
+  pointer-events: none;
+  justify-content: center;
+  align-items: flex-end;
+  padding-bottom: 15%;
+}
+
+#hint-box {
+  border: 1px solid rgba(255, 255, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 10px 20px;
+  border-radius: 5px;
+  max-width: 80%;
+  position: relative;
+}
+
+#hint-box::before,
+#hint-box::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+}
+
+#hint-box::before {
+  top: 0;
+  left: 0;
+  border-top: 1px solid rgba(255, 255, 0, 0.7);
+  border-left: 1px solid rgba(255, 255, 0, 0.7);
+}
+
+#hint-box::after {
+  top: 0;
+  right: 0;
+  border-top: 1px solid rgba(255, 255, 0, 0.7);
+  border-right: 1px solid rgba(255, 255, 0, 0.7);
+}
+
+#hint-text {
+  color: rgb(255, 255, 100);
+  font-size: clamp(14px, 3vw, 16px);
+  text-align: center;
+  margin: 0;
+}
+
+/* Loading screen styles */
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0a1012;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: opacity 0.5s ease-out;
+}
+
+#loading-text {
+  font-family: "Courier New", monospace;
+  font-size: clamp(18px, 5vw, 24px);
+  color: #0cf;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#loading-spinner {
+  width: clamp(40px, 10vw, 60px);
+  height: clamp(40px, 10vw, 60px);
+  border: 3px solid rgba(0, 204, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #0cf;
+  animation: spin 1s ease-in-out infinite;
+}
+
+/* Game status indicators */
+#level-indicator {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border: 1px solid #0cf;
+  padding: 5px 15px;
+  border-radius: 5px;
+  z-index: 15;
+  pointer-events: none;
+}
+
+#level-text {
+  color: #0cf;
+  font-size: clamp(14px, 3vw, 20px);
+  margin: 0;
+}
+
+#timer {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: #0cf;
+  font-size: clamp(14px, 3vw, 20px);
+  z-index: 15;
+  pointer-events: none;
+}
+
+/* Game completion screen */
+#complete-overlay {
+  background-color: rgba(0, 0, 0, 0.85);
+  flex-direction: column;
+}
+
+#complete-content {
+  border: 2px solid #0cf;
+  background-color: rgba(0, 20, 40, 0.8);
+  border-radius: 10px;
+  padding: 30px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+#complete-title {
+  color: #0cf;
+  font-size: clamp(20px, 5vw, 28px);
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+#scores-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+#scores-table th {
+  color: #0cf;
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid rgba(0, 204, 255, 0.5);
+}
+
+#scores-table td {
+  color: white;
+  padding: 10px;
+}
+
+#scores-table tr.total-row {
+  border-top: 1px solid rgba(0, 204, 255, 0.5);
+}
+
+#scores-table tr.total-row td {
+  color: #0cf;
+  font-weight: bold;
+}
+
+#restart-button {
+  background: transparent;
+  border: 2px solid #0cf;
+  color: white;
+  padding: 10px 20px;
+  font-family: "Courier New", monospace;
+  font-size: clamp(14px, 3vw, 16px);
+  border-radius: 8px;
+  margin-top: 20px;
+  cursor: pointer;
+  width: 100%;
+}
+
+#restart-button:hover {
+  background-color: rgba(0, 204, 255, 0.1);
+}
+
+/* Progress bar */
+#progress-container {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  max-width: 700px;
+  height: 24px;
+  /* Increased height */
+  background-color: rgba(0, 60, 80, 0.4);
+  border-radius: 4px;
+  /* Increased to match thicker bar */
+  overflow: visible;
+  /* Allow the securing text to be visible outside container */
+  z-index: 15;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background-color: rgba(0, 204, 255, 0.8);
+  border-radius: 4px;
+  /* Increased to match container */
+  position: relative;
+}
+
+#locking-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background-color: rgba(0, 255, 200, 0.8);
+  border-radius: 4px;
+  /* Increased to match container */
+  box-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+  opacity: 0;
+  transition: width 0s linear;
+}
+
+/* Securing text box */
+#securing-box {
+  position: absolute;
+  padding: 0;
+  color: white;
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  left: 50%;
+  top: 50%;
+  /* Center vertically in progress bar */
+  transform: translate(-50%, -50%);
+  /* Center both horizontally and vertically */
+  z-index: 16;
+  text-align: center;
+  pointer-events: none;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 0 5px rgba(0, 204, 255, 0.8);
+  /* Enhanced text shadow for better visibility */
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Countdown overlay */
+#countdown-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 30;
+}
+
+#countdown-box {
+  text-align: center;
+}
+
+#level-countdown {
+  color: #0cf;
+  font-size: clamp(16px, 4vw, 24px);
+  margin-bottom: 20px;
+}
+
+#countdown-number {
+  width: clamp(60px, 20vw, 120px);
+  height: clamp(60px, 20vw, 120px);
+  background-color: rgba(0, 20, 40, 0.8);
+  border: 2px solid #0cf;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(36px, 10vw, 60px);
+  color: white;
+  position: relative;
+  margin: 0 auto;
+}
+
+#countdown-number::before,
+#countdown-number::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+}
+
+#countdown-number::before {
+  top: 0;
+  left: 0;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+#countdown-number::after {
+  bottom: 0;
+  right: 0;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  #mode-buttons {
+    flex-direction: column;
+  }
+
+  #canvas-container {
+    max-height: 80vh;
+  }
+
+  #level-indicator,
+  #timer {
+    font-size: 14px;
+    padding: 5px;
+  }
+}
