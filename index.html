@@ -145,42 +145,47 @@
       usedEndlessLevelIndices: [] // Track which levels have been used
     };
 
-    // Standard mode levels
-    let levels = [
-      {
-        progressFunction: (metrics) => {
-          // Level 1: Raise hands above head
-          return metrics.handsOverHead.score;
-        },
-      },
-      {
-        progressFunction: (metrics) => {
-          // Level 2: Pinch left thumb and index finger
-          return metrics.leftHandPinch.score;
-        },
-      },
-      {
-        progressFunction: (metrics) => {
-          // Level 3: Open mouth and bring wrists together
-          if (metrics.mouthOpen.score == null || metrics.wrists.score == null) {
-            return null;
+    // Utility function to create a level from metric IDs
+    function createLevel(metricIds) {
+      if (metricIds.length === 1) {
+        // Single metric level
+        return {
+          metricIds: metricIds,
+          progressFunction: (metrics) => {
+            return metrics[metricIds[0]].score;
           }
-          
-          // Half the score is mouth open, half is wrists
-          return (metrics.mouthOpen.score + metrics.wrists.score) / 2;
-        },
-      },
-      {
-        progressFunction: (metrics) => {
-          // Level 4: Show the back of both hands to the camera (50% weight for each hand)
-          if (metrics.leftHandBack.score == null || metrics.rightHandBack.score == null) {
-            return null;
+        };
+      } else {
+        // Multi-metric level
+        return {
+          metricIds: metricIds,
+          progressFunction: (metrics) => {
+            // Check if any required metric is missing
+            for (const id of metricIds) {
+              if (metrics[id].score == null) {
+                return null;
+              }
+            }
+            
+            // Calculate product of all scores
+            let product = 1;
+            for (const id of metricIds) {
+              product *= metrics[id].score;
+            }
+            
+            // Take nth root to maintain 0-1 range
+            return Math.pow(product, 1/metricIds.length);
           }
-          
-          // Return average of both hand scores (50% weight each)
-          return (metrics.leftHandBack.score + metrics.rightHandBack.score) / 2;
-        },
+        };
       }
+    }
+    
+    // Standard mode levels - predefined progression
+    let levels = [
+      createLevel(['handsOverHead']),                      // Level 1: Raise hands above head
+      createLevel(['leftHandPinch']),                      // Level 2: Pinch left thumb and index finger
+      createLevel(['mouthOpen', 'wrists']),                // Level 3: Open mouth and bring wrists together
+      createLevel(['leftHandBack', 'rightHandBack'])       // Level 4: Show the back of both hands
     ]
     
     // Available metrics for endless mode
@@ -222,12 +227,7 @@
       // First, add all single-metric levels
       for (let i = 0; i < availableMetrics.length; i++) {
         const metric = availableMetrics[i];
-        allLevels.push({
-          metricIds: [metric.id],
-          progressFunction: (metrics) => {
-            return metrics[metric.id].score;
-          }
-        });
+        allLevels.push(createLevel([metric.id]));
       }
       
       // Then, add all possible combinations of two metrics
@@ -235,18 +235,7 @@
         for (let j = i + 1; j < availableMetrics.length; j++) {
           const metric1 = availableMetrics[i];
           const metric2 = availableMetrics[j];
-          
-          allLevels.push({
-            metricIds: [metric1.id, metric2.id],
-            progressFunction: (metrics) => {
-              if (metrics[metric1.id].score == null || metrics[metric2.id].score == null) {
-                return null;
-              }
-              
-              // Average of both scores (50% weight each)
-              return (metrics[metric1.id].score + metrics[metric2.id].score) / 2;
-            }
-          });
+          allLevels.push(createLevel([metric1.id, metric2.id]));
         }
       }
       
