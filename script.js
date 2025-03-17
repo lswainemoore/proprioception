@@ -233,8 +233,8 @@ const availableMetrics = [
   {
     id: "rightHandBack",
     title: "Show back of right hand",
-    hint: "Experiment with your left hand",
-  },
+    hint: "Experiment with your right hand",
+},
 ];
 
 // Generate all possible metric combinations for endless mode
@@ -634,7 +634,7 @@ function drawAllPoints() {
   if (hands) {
     for (let i = 0; i < hands.length; i++) {
       const hand = hands[i];
-      drawKeypoints(hand);
+      // drawKeypoints(hand);
       drawHandSkeleton(hand);
     }
   }
@@ -945,10 +945,18 @@ function updateLockingProgress(visible, progress = 0) {
   }
 }
 
-// Update timer display
+// Update timer display - only updates once per second to improve performance
+let lastUpdateTime = 0;
 function updateTimer(time) {
-  if (domElements.timer) {
-    domElements.timer.textContent = `${time}s`;
+  // Only update the DOM once per second
+  const currentSecond = Math.floor(time);
+  if (currentSecond !== lastUpdateTime) {
+    lastUpdateTime = currentSecond;
+    if (domElements.timer) {
+      // Format time to avoid showing ".0" when it's a whole number
+      const formattedTime = currentSecond === parseFloat(time) ? currentSecond : time;
+      domElements.timer.textContent = `${formattedTime}s`;
+    }
   }
 }
 

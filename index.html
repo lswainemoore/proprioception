@@ -85,7 +85,15 @@
     <!-- Error message overlay -->
     <div id="error-overlay" class="ui-overlay">
       <div id="error-box">
-        <p id="error-message">Relevant appendages not detected</p>
+        <div id="tracking-error">
+          <p id="error-message">Relevant appendages not detected</p>
+        </div>
+        <div id="camera-error">
+          <p id="camera-error-message">Please enable your webcam</p>
+          <p id="camera-error-detail">Webcam access is required to play this game. Your camera feed is only used
+            locally.</p>
+          <button id="request-permission-btn">GRANT ACCESS</button>
+        </div>
       </div>
     </div>
 
