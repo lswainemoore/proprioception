@@ -590,7 +590,7 @@ canvas {
   font-size: 18px;
   font-weight: bold;
   cursor: pointer;
-  display: flex;
+  display: none; /* Hidden by default, will be shown during gameplay */
   justify-content: center;
   align-items: center;
   padding: 0;

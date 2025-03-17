@@ -1506,6 +1506,9 @@ function resetGame() {
   if (domElements.progressContainer)
     domElements.progressContainer.style.display = "none";
     
+  // Hide help button
+  document.getElementById("in-game-instructions-btn").style.display = "none";
+    
   // Reset progress bar
   updateProgressBar(0);
 
@@ -1551,6 +1554,9 @@ function endGame() {
   if (domElements.timer) domElements.timer.style.display = "none";
   if (domElements.progressContainer)
     domElements.progressContainer.style.display = "none";
+    
+  // Hide help button
+  document.getElementById("in-game-instructions-btn").style.display = "none";
 }
 
 function startLevel() {
@@ -1569,6 +1575,9 @@ function startLevel() {
   if (domElements.timer) domElements.timer.style.display = "block";
   if (domElements.progressContainer)
     domElements.progressContainer.style.display = "block";
+    
+  // Show help button during gameplay
+  document.getElementById("in-game-instructions-btn").style.display = "flex";
 
   // Reset progress indicators
   updateProgressBar(0);
@@ -1594,6 +1603,9 @@ function startCountdown() {
   if (domElements.levelIndicator) domElements.levelIndicator.style.display = "none";
   if (domElements.timer) domElements.timer.style.display = "none";
   if (domElements.progressContainer) domElements.progressContainer.style.display = "none";
+  
+  // Hide help button during countdown
+  document.getElementById("in-game-instructions-btn").style.display = "none";
 
   // Get difficulty for level display
   let difficulty = "Easy";
