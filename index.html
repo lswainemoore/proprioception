@@ -32,8 +32,11 @@
 
     <!-- Game UI elements -->
     <div id="timer">0.0s</div>
-    <div id="level-indicator">
-      <p id="level-text">LEVEL 1 • Easy</p>
+    <div id="level-container">
+      <button id="in-game-instructions-btn" aria-label="Instructions">?</button>
+      <div id="level-indicator">
+        <p id="level-text">LEVEL 1 • Easy</p>
+      </div>
     </div>
     <div id="progress-container">
       <div id="progress-bar"></div>
@@ -48,6 +51,7 @@
         <div id="mode-buttons">
           <button id="standard-mode-btn" class="mode-button">STANDARD</button>
           <button id="endless-mode-btn" class="mode-button">ENDLESS</button>
+          <button id="instructions-btn" class="mode-button">INSTRUCTIONS</button>
         </div>
         <!-- Removed SELECT MODE text -->
       </div>
@@ -81,13 +85,17 @@
     <!-- Error message overlay -->
     <div id="error-overlay" class="ui-overlay">
       <div id="error-box">
-        <p id="error-message">Relevant body parts not detected</p>
+        <p id="error-message">Relevant appendages not detected</p>
       </div>
     </div>
 
     <!-- Hint overlay -->
     <div id="hint-overlay" class="ui-overlay">
       <div id="hint-box">
+        <span class="corner top-left"></span>
+        <span class="corner top-right"></span>
+        <span class="corner bottom-left"></span>
+        <span class="corner bottom-right"></span>
         <p id="hint-text">HINT: Try something different</p>
       </div>
     </div>
@@ -97,6 +105,19 @@
       <div id="countdown-box">
         <p id="level-countdown"></p>
         <div id="countdown-number">3</div>
+      </div>
+    </div>
+    
+    <!-- Instructions overlay -->
+    <div id="instructions-overlay" class="ui-overlay">
+      <div id="instructions-content">
+        <h2 id="instructions-title">INSTRUCTIONS</h2>
+        <div id="instructions-text">
+          <p>You're in-shop for some proprioceptive issues you've been experiencing. We've replaced some of your on-board sensors, but to clear you, we need to run a clearance diagnostic.</p>
+          <p>The test requires you to manipulate your form to match the objective. For instance: raise your arms above or your head, or make a fist. But there's a catch: you will not be told the objective explicitly. You must infer it from feedback given in the form of a progress bar. Once you've filled the progress bar, hold the pose for a couple seconds to confirm and proceed to the next level. As the test proceeds, you will need to perform multiple actions simulateously.</p>
+          <p>Note: in order to perform this test, we require your video feed, but it's only used locally.</p>
+        </div>
+        <button id="close-instructions-btn">CLOSE</button>
       </div>
     </div>
   </div>

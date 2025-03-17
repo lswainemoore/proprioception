@@ -132,44 +132,54 @@ canvas {
 }
 
 .mode-button {
-  background: transparent;
+  background: rgba(0, 20, 40, 0.5);
   border: 2px solid #0cf;
-  color: white;
-  padding: 10px 20px;
+  color: #0cf;
+  padding: 12px 25px;
   font-family: "Courier New", monospace;
   font-size: clamp(14px, 3vw, 20px);
-  border-radius: 8px;
+  border-radius: 2px;
   min-width: 160px;
   cursor: pointer;
   position: relative;
-  overflow: hidden;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
 }
 
 .mode-button:hover {
-  background-color: rgba(0, 204, 255, 0.1);
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.mode-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
 }
 
 .mode-button::before,
 .mode-button::after {
   content: "";
   position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 1px solid #0cf;
+  width: 12px;
+  height: 12px;
+  z-index: 5;
 }
 
 .mode-button::before {
-  top: 0;
-  left: 0;
-  border-right: none;
-  border-bottom: none;
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
 }
 
 .mode-button::after {
-  bottom: 0;
-  right: 0;
-  border-left: none;
-  border-top: none;
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
 }
 
 #mode-instruction {
@@ -202,47 +212,73 @@ canvas {
 /* Hint overlay */
 #hint-overlay {
   pointer-events: none;
-  justify-content: center;
-  align-items: flex-end;
-  padding-bottom: 80px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  z-index: 20;
 }
 
 #hint-box {
-  border: 1px solid rgba(255, 255, 0, 0.7);
-  background-color: rgba(0, 0, 0, 0.6);
+  border: 2px solid #0cf;
+  background-color: rgba(0, 20, 40, 0.7);
   padding: 10px 20px;
-  border-radius: 5px;
+  border-radius: 2px;
   max-width: 80%;
-  position: relative;
+  position: fixed; /* Use fixed position to ignore container constraints */
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.3);
+  /* Position precisely in the middle of the lower half of the screen */
+  bottom: 20vh; /* 20% from the bottom of the viewport */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100; /* Ensure it's above other elements */
 }
 
-#hint-box::before,
-#hint-box::after {
-  content: "";
+/* Corners for hint box */
+#hint-box .corner {
   position: absolute;
-  width: 5px;
-  height: 5px;
+  width: 10px;
+  height: 10px;
+  z-index: 5;
 }
 
-#hint-box::before {
-  top: 0;
-  left: 0;
-  border-top: 1px solid rgba(255, 255, 0, 0.7);
-  border-left: 1px solid rgba(255, 255, 0, 0.7);
+#hint-box .top-left {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
 }
 
-#hint-box::after {
-  top: 0;
-  right: 0;
-  border-top: 1px solid rgba(255, 255, 0, 0.7);
-  border-right: 1px solid rgba(255, 255, 0, 0.7);
+#hint-box .top-right {
+  top: -2px;
+  right: -2px;
+  border-top: 2px solid #0cf;
+  border-right: 2px solid #0cf;
+}
+
+#hint-box .bottom-left {
+  bottom: -2px;
+  left: -2px;
+  border-bottom: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+#hint-box .bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
 }
 
 #hint-text {
-  color: rgb(255, 255, 100);
+  color: #0cf;
   font-size: clamp(14px, 3vw, 16px);
   text-align: center;
   margin: 0;
+  letter-spacing: 1px;
+  text-shadow: 0 0 5px rgba(0, 204, 255, 0.5);
 }
 
 /* Loading screen styles */
@@ -279,16 +315,23 @@ canvas {
 }
 
 /* Game status indicators */
-#level-indicator {
+#level-container {
   position: absolute;
   top: 20px;
   right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Space between help button and level indicator */
+  z-index: 35; /* Higher than overlays */
+}
+
+#level-indicator {
   background-color: rgba(0, 0, 0, 0.6);
   border: 1px solid #0cf;
   padding: 5px 15px;
   border-radius: 5px;
-  z-index: 15;
   pointer-events: none;
+  z-index: 15;
 }
 
 #level-text {
@@ -359,20 +402,55 @@ canvas {
 }
 
 #restart-button {
-  background: transparent;
+  background: rgba(0, 20, 40, 0.5);
   border: 2px solid #0cf;
-  color: white;
-  padding: 10px 20px;
+  color: #0cf;
+  padding: 12px 25px;
   font-family: "Courier New", monospace;
   font-size: clamp(14px, 3vw, 16px);
-  border-radius: 8px;
+  border-radius: 2px;
   margin-top: 20px;
   cursor: pointer;
   width: 100%;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
+  position: relative;
 }
 
 #restart-button:hover {
-  background-color: rgba(0, 204, 255, 0.1);
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}
+
+#restart-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+}
+
+/* Corner decorations for restart button */
+#restart-button::before,
+#restart-button::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  z-index: 5;
+}
+
+#restart-button::before {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+#restart-button::after {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
 }
 
 /* Progress bar */
@@ -462,18 +540,21 @@ canvas {
 }
 
 #countdown-number {
-  width: clamp(60px, 20vw, 120px);
-  height: clamp(60px, 20vw, 120px);
+  width: clamp(80px, 20vw, 140px);
+  height: clamp(80px, 20vw, 140px);
   background-color: rgba(0, 20, 40, 0.8);
   border: 2px solid #0cf;
-  border-radius: 8px;
+  border-radius: 2px;
   display: flex;
   justify-content: center;
   align-items: center;
   font-size: clamp(36px, 10vw, 60px);
-  color: white;
+  color: #0cf;
   position: relative;
   margin: 0 auto;
+  text-shadow: 0 0 12px rgba(0, 204, 255, 0.8);
+  box-shadow: 0 0 25px rgba(0, 204, 255, 0.3);
+  letter-spacing: 2px;
 }
 
 #countdown-number::before,
@@ -485,17 +566,99 @@ canvas {
 }
 
 #countdown-number::before {
-  top: 0;
-  left: 0;
+  top: -2px;
+  left: -2px;
   border-top: 2px solid #0cf;
   border-left: 2px solid #0cf;
 }
 
 #countdown-number::after {
-  bottom: 0;
-  right: 0;
+  bottom: -2px;
+  right: -2px;
   border-bottom: 2px solid #0cf;
   border-right: 2px solid #0cf;
+}
+
+/* In-game help button */
+#in-game-instructions-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: rgba(0, 20, 40, 0.7);
+  border: 2px solid #0cf;
+  color: #0cf;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+  text-shadow: 0 0 5px rgba(0, 204, 255, 0.5);
+  transition: all 0.2s ease;
+  pointer-events: auto; /* Ensure clicks are registered */
+}
+
+#in-game-instructions-btn:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
+}
+
+/* Instructions overlay */
+#instructions-overlay {
+  background-color: rgba(0, 0, 0, 0.85);
+  z-index: 1000; /* Make sure it's above everything */
+}
+
+#instructions-content {
+  border: 2px solid #0cf;
+  background-color: rgba(0, 20, 40, 0.8);
+  border-radius: 2px;
+  padding: 30px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  position: relative;
+}
+
+#instructions-title {
+  color: #0cf;
+  font-size: clamp(20px, 5vw, 28px);
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+}
+
+#instructions-text {
+  color: white;
+  font-size: clamp(14px, 3vw, 16px);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+#close-instructions-btn {
+  background: rgba(0, 20, 40, 0.5);
+  border: 2px solid #0cf;
+  color: #0cf;
+  padding: 12px 25px;
+  font-family: "Courier New", monospace;
+  font-size: clamp(14px, 3vw, 16px);
+  border-radius: 2px;
+  cursor: pointer;
+  width: 100%;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
+  position: relative;
+}
+
+#close-instructions-btn:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
 }
 
 /* Responsive adjustments */
@@ -512,5 +675,15 @@ canvas {
   #timer {
     font-size: 14px;
     padding: 5px;
+  }
+  
+  #level-container {
+    gap: 10px; /* Less space between elements on mobile */
+  }
+  
+  #in-game-instructions-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
   }
 }

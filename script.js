@@ -663,6 +663,7 @@ let domElements = {
   hintOverlay: null,
   countdownOverlay: null,
   completeOverlay: null,
+  instructionsOverlay: null,
 
   // UI Elements
   timer: null,
@@ -670,10 +671,19 @@ let domElements = {
   levelText: null,
   progressBar: null,
   lockingProgress: null,
+  securingBox: null,
+  progressContainer: null,
 
   // Mode Selection
   standardModeBtn: null,
   endlessModeBtn: null,
+  instructionsBtn: null,
+
+  // In-game Help
+  inGameInstructionsBtn: null,
+  
+  // Instructions
+  closeInstructionsBtn: null,
 
   // Countdown
   levelCountdown: null,
@@ -700,6 +710,7 @@ function initializeDOMElements() {
   domElements.hintOverlay = document.getElementById("hint-overlay");
   domElements.countdownOverlay = document.getElementById("countdown-overlay");
   domElements.completeOverlay = document.getElementById("complete-overlay");
+  domElements.instructionsOverlay = document.getElementById("instructions-overlay");
 
   // UI Elements
   domElements.timer = document.getElementById("timer");
@@ -713,6 +724,13 @@ function initializeDOMElements() {
   // Mode Selection
   domElements.standardModeBtn = document.getElementById("standard-mode-btn");
   domElements.endlessModeBtn = document.getElementById("endless-mode-btn");
+  domElements.instructionsBtn = document.getElementById("instructions-btn");
+  
+  // In-game Help
+  domElements.inGameInstructionsBtn = document.getElementById("in-game-instructions-btn");
+  
+  // Instructions
+  domElements.closeInstructionsBtn = document.getElementById("close-instructions-btn");
 
   // Countdown
   domElements.levelCountdown = document.getElementById("level-countdown");
@@ -727,6 +745,11 @@ function initializeDOMElements() {
   domElements.errorMessage = document.getElementById("error-message");
   domElements.hintText = document.getElementById("hint-text");
 
+  // Initialize UI elements to be hidden by default
+  if (domElements.levelIndicator) domElements.levelIndicator.style.display = "none";
+  if (domElements.timer) domElements.timer.style.display = "none";
+  if (domElements.progressContainer) domElements.progressContainer.style.display = "none";
+
   // Add event listeners
   domElements.standardModeBtn.addEventListener("click", () => {
     startGame("standard");
@@ -740,6 +763,19 @@ function initializeDOMElements() {
 
   domElements.restartButton.addEventListener("click", () => {
     restartGame();
+  });
+  
+  // Instructions buttons
+  domElements.instructionsBtn.addEventListener("click", () => {
+    showOverlay("instructionsOverlay");
+  });
+  
+  domElements.inGameInstructionsBtn.addEventListener("click", () => {
+    showOverlay("instructionsOverlay");
+  });
+  
+  domElements.closeInstructionsBtn.addEventListener("click", () => {
+    hideOverlay("instructionsOverlay");
   });
 
   // Add key press event listener to document
@@ -783,6 +819,13 @@ function updateLockingProgress(visible, progress = 0) {
   if (domElements.lockingProgress && domElements.securingBox) {
     // Handle the green progress bar
     domElements.lockingProgress.style.opacity = visible ? "1" : "0";
+    
+    if (!visible) {
+      // When not visible, ensure width is reset to 0
+      domElements.lockingProgress.style.width = "0%";
+      domElements.securingBox.style.opacity = "0";
+      return;
+    }
 
     // Apply the easing function to the progress for smoother animation
     let easedProgress = progress;
@@ -797,7 +840,7 @@ function updateLockingProgress(visible, progress = 0) {
     domElements.lockingProgress.style.width = `${easedProgress * 100}%`;
 
     // Handle the "SECURING..." text box
-    if (visible && progress > 0.15) {
+    if (progress > 0.15) {
       // Make the box visible but keep it centered
       domElements.securingBox.style.opacity = "1";
     } else {
@@ -927,9 +970,19 @@ function draw() {
     if (gameState.menuScreen) {
       // Mode selection is now handled by the HTML overlay and event listeners
       showOverlay("modeSelectionOverlay");
+      
+      // Make sure UI elements are hidden during mode selection
+      if (domElements.levelIndicator) domElements.levelIndicator.style.display = "none";
+      if (domElements.timer) domElements.timer.style.display = "none";
+      if (domElements.progressContainer) domElements.progressContainer.style.display = "none";
     } else {
       // This is the initial title screen, also using the mode selection overlay
       showOverlay("modeSelectionOverlay");
+      
+      // Make sure UI elements are hidden during initial screen
+      if (domElements.levelIndicator) domElements.levelIndicator.style.display = "none";
+      if (domElements.timer) domElements.timer.style.display = "none";
+      if (domElements.progressContainer) domElements.progressContainer.style.display = "none";
     }
   } else if (gameState.ended) {
     // Game complete screen - use HTML overlay
@@ -1012,7 +1065,13 @@ function draw() {
     const progress = smoothedProgress;
 
     // Handle lock-in logic for pose holding
-    if (progress >= 1) {
+    if (progress === null) {
+      // If progress becomes null (hand/body parts disappeared), cancel locking
+      if (gameState.lockingIn) {
+        gameState.lockingIn = false;
+        updateLockingProgress(false, 0);
+      }
+    } else if (progress >= 1) {
       // If we hit 100% and aren't already locking in, start the lock-in
       if (!gameState.lockingIn) {
         gameState.lockingIn = true;
@@ -1032,6 +1091,7 @@ function draw() {
       // If progress drops below 100%, cancel the lock-in
       if (gameState.lockingIn) {
         gameState.lockingIn = false;
+        updateLockingProgress(false, 0);
       }
     }
 
