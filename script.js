@@ -244,17 +244,15 @@ function createLevel(metricIds) {
   }
 }
 
-// TODO fix this order and such...
 // Standard mode levels - predefined progression
 let levels = [
-  createLevel(["leftHandOverMouth"]), // Level 1: Cover mouth with left hand (Easy)
-  createLevel(["leftHandFist"]), // Level 2: Make a fist with left hand (Easy)
-  createLevel(["leftHandOverHead"]), // Level 3: Raise left hand above head (Easy)
-  createLevel(["leftHandPinch"]), // Level 4: Pinch left thumb and index finger (Easy)
-  createLevel(["mouthOpen", "wrists"]), // Level 5: Open mouth and bring wrists together (Medium)
-  createLevel(["leftHandBack", "rightHandBack"]), // Level 6: Show the back of both hands (Medium)
-  createLevel(["rightHandOverMouth", "leftHandFist"]), // Level 7: Cover mouth with right hand while making left fist (Hard)
-  createLevel(["leftHandOverHead", "mouthOpen", "wrists"]), // Level 8: Triple combo (Hard)
+  createLevel(["leftHandFist"]),
+  createLevel(["rightHandOverMouth"]),
+  createLevel(["leftHandOverHead"]),
+  createLevel(["mouthOpen", "wrists"]),
+  createLevel(["leftHandBack", "rightHandBack"]),
+  createLevel(["rightHandOverMouth", "leftHandFist"]),
+  createLevel(["leftHandOverHead", "mouthOpen", "wrists"]),
 ];
 
 // Available metrics for endless mode with hints
