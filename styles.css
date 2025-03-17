@@ -2,7 +2,7 @@ body {
   margin: 0;
   padding: 0;
   background-color: #111;
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", monospace;
   color: #0cf;
   overflow: hidden;
   height: 100vh;
@@ -136,7 +136,7 @@ canvas {
   border: 2px solid #0cf;
   color: #0cf;
   padding: 12px 25px;
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", sans-serif;
   font-size: clamp(14px, 3vw, 20px);
   border-radius: 2px;
   min-width: 160px;
@@ -228,7 +228,7 @@ canvas {
   border: 2px solid #0cf;
   color: #0cf;
   padding: 12px 25px;
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", sans-serif;
   font-size: clamp(14px, 3vw, 16px);
   border-radius: 2px;
   cursor: pointer;
@@ -257,7 +257,7 @@ canvas {
   border: 2px solid #0cf;
   color: #0cf;
   padding: 12px 25px;
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", sans-serif;
   font-size: clamp(14px, 3vw, 16px);
   border-radius: 2px;
   cursor: pointer;
@@ -364,7 +364,7 @@ canvas {
 }
 
 #loading-text {
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", sans-serif;
   font-size: clamp(18px, 5vw, 24px);
   color: #0cf;
   margin-bottom: 20px;
@@ -472,7 +472,7 @@ canvas {
   border: 2px solid #0cf;
   color: #0cf;
   padding: 12px 25px;
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", sans-serif;
   font-size: clamp(14px, 3vw, 16px);
   border-radius: 2px;
   margin-top: 20px;
@@ -565,7 +565,7 @@ canvas {
   position: absolute;
   padding: 0;
   color: white;
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", sans-serif;
   font-size: 14px;
   white-space: nowrap;
   opacity: 0;
@@ -714,7 +714,7 @@ canvas {
   border: 2px solid #0cf;
   color: #0cf;
   padding: 12px 25px;
-  font-family: "Courier New", monospace;
+  font-family: "Recursive", sans-serif;
   font-size: clamp(14px, 3vw, 16px);
   border-radius: 2px;
   cursor: pointer;

@@ -1441,7 +1441,7 @@ function drawProgressBar(progress) {
       noStroke();
       fill(255, 255, 255, 230);
       textSize(12);
-      textFont("Courier New");
+      textFont("Recursive");
       textAlign(CENTER, CENTER);
       text(
         "SECURING...",
