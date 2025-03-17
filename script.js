@@ -78,9 +78,9 @@ const metricsDefinition = {
     calculateScore: function (metric) {
       if (!metric.calced) return null;
 
-      // wrists are 10 - 70
-      // < 20 is score 0, > 60 is score 1, and in between is linear
-      return Math.min(1, Math.max(0, 1 - (metric.threeD - 20) / 40));
+      // wrists are 25 - 60
+      // < 25 is score 1, > 60 is score 1 and in between is linear
+      return Math.min(1, Math.max(0, 1 - (metric.threeD - 25) / 35));
     },
   },
   mouthOpen: {
