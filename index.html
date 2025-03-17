@@ -4,1241 +4,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ML5.js Handpose</title>
+  <title>PROPRIOCEPTION</title>
+  <meta name="description" content="How well do you control your body?">
+  
+  <!-- OpenGraph tags for social media sharing -->
+  <meta property="og:title" content="PROPRIOCEPTION">
+  <meta property="og:description" content="How well do you control your body?">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://lincoln.swaine-moore.is/blue">
+  <meta property="og:image" content="TODO">
+  
+  <!-- Twitter card tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PROPRIOCEPTION">
+  <meta name="twitter:description" content="How well do you control your body?">
+  <meta name="twitter:image" content="TODO">
+  
+  <!-- Favicons -->
+  <link rel="icon" href="favicon/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Recursive:wght@300..1000&display=swap" rel="stylesheet">
+
+  <!-- Scripts and Styles -->
   <script src="./p5@1.11.1.min.js"></script>
   <script src="./ml5@1.2.1.min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    canvas {
-      display: block;
-    }
-  </style>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 
 <body>
-  <script>
-    let video;
-    let handPose;
-    let bodyPose;
-    let faceMesh;
-    let hands;
-    let bodies;
-    let faces;
-    let debugMode = false;
+  <!-- App container with responsive layout -->
+  <div id="app-container">
+    <!-- Loading screen overlay -->
+    <div id="loading-screen">
+      <div id="loading-text">INITIALIZING SYSTEM</div>
+      <div id="loading-spinner"></div>
+    </div>
 
-    // Global metrics definition with score calculation functions
-    const metricsDefinition = {
-      leftHandPinch: {
-        title: "Left Hand Pinch",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // range is about 1 - 15
-          // < 4 is score 1, > 10 is score 0, and in between is linear
-          if (metric.threeD <= 5) {
-            return 1;
-          } else if (metric.threeD > 10) {
-            return 0;
-          } else {
-            return 1 - (metric.threeD - 5) / 5;
-          }
-        }
-      },
-      rightHandPinch: {
-        title: "Right Hand Pinch",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // range is about 1 - 15
-          // < 4 is score 1, > 10 is score 0, and in between is linear
-          if (metric.threeD <= 5) {
-            return 1;
-          } else if (metric.threeD > 10) {
-            return 0;
-          } else {
-            return 1 - (metric.threeD - 5) / 5;
-          }
-        }
-      },
-      wrists: {
-        title: "Wrists",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // wrists are 10 - 70
-          // < 20 is score 0, > 60 is score 1, and in between is linear
-          return Math.min(1, Math.max(0, 1 - (metric.threeD - 20) / 40));
-        }
-      },
-      mouthOpen: {
-        title: "Mouth Open",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // mouth open is around 20 - 120
-          // < 30 is score 0, > 100 is score 1, and in between is linear
-          return Math.min(1, Math.max(0, (metric.ratio - 30) / 70));
-        }
-      },
-      eyebrowRaised: {
-        title: "Eyebrow Raised",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // Not currently used in levels, placeholder for future use
-          return 0;
-        }
-      },
-      leftHandOverHead: {
-        title: "Left Hand Over Head",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // Height difference between head and hand, approx range -200 to 200
-          // < -100 is score 0, > 100 is score 1, and in between is linear.
-          return Math.min(1, Math.max(0, (metric.twoD + 100) / 200));
-        }
-      },
-      rightHandOverHead: {
-        title: "Right Hand Over Head",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // Height difference between head and hand, approx range -200 to 200
-          // < -100 is score 0, > 100 is score 1, and in between is linear.
-          return Math.min(1, Math.max(0, (metric.twoD + 100) / 200));
-        }
-      },
-      // handsOverHead: {
-      //   title: "Hands Over Head",
-      //   calculateScore: function(metric) {
-      //     if (!metric.calced) return null;
-          
-      //     // this would go from about -200 to 200, if head in center (and screen is 400 tall),
-      //     // < -100 is score 0, > 100 is score 1, and in between is linear.
-      //     return Math.min(1, Math.max(0, (metric.twoD + 100) / 200));
-      //   }
-      // },
-      leftHandBack: {
-        title: "Left Hand Back",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // Map orientation range -0.8 to 0.8 to score 0 to 1
-          return Math.min(1, Math.max(0, (metric.orientation + 0.8) / 1.6));
-        }
-      },
-      rightHandBack: {
-        title: "Right Hand Back",
-        calculateScore: function(metric) {
-          if (!metric.calced) return null;
-          
-          // Map orientation range -0.8 to 0.8 to score 0 to 1
-          return Math.min(1, Math.max(0, (metric.orientation + 0.8) / 1.6));
-        }
-      }
-    };
+    <!-- Canvas container for responsive sizing -->
+    <div id="canvas-container"></div>
 
-    let gameState = {
-      started: false,
-      playing: false,
-      level: 1,
-      ended: false,
-      countdown: false,
-      countdownStartTime: 0,
-      levelStartTime: 0,
-      scores: {},
-      totalScore: 0,
-      progressHistory: [], // Array to store recent progress values
-      progressHistorySize: 15, // Number of frames to average - increased for smoother movement
-      mode: null, // 'standard' or 'endless'
-      menuScreen: true, // Show mode selection menu
-      endlessLevels: [], // All possible combinations for endless mode
-      usedEndlessLevelIndices: [], // Track which levels have been used
-      showHint: false, // Whether to show a hint
-      hintShown: false, // Track if hint has been shown for current level
-      currentHint: null, // Store the current hint to keep it consistent
-      lockingIn: false, // Whether we're currently locking in a pose
-      lockInStartTime: 0, // When we started locking in
-      lockInDuration: 1500 // How long to hold pose (milliseconds)
-    };
+    <!-- Dashboard frame with corner decorations -->
+    <div id="dashboard-frame">
+      <div class="frame-corner top-left"></div>
+      <div class="frame-corner top-right"></div>
+      <div class="frame-corner bottom-left"></div>
+      <div class="frame-corner bottom-right"></div>
+    </div>
 
-    // Utility function to create a level from metric IDs
-    function createLevel(metricIds) {
-      if (metricIds.length === 1) {
-        // Single metric level
-        return {
-          metricIds: metricIds,
-          progressFunction: (metrics) => {
-            return metrics[metricIds[0]].score;
-          }
-        };
-      } else {
-        // Multi-metric level
-        return {
-          metricIds: metricIds,
-          progressFunction: (metrics) => {
-            // Check if any required metric is missing
-            for (const id of metricIds) {
-              if (metrics[id].score == null) {
-                return null;
-              }
-            }
-            
-            // Calculate product of all scores
-            let product = 1;
-            for (const id of metricIds) {
-              product *= metrics[id].score;
-            }
-            
-            // Take nth root to maintain 0-1 range
-            return Math.pow(product, 1/metricIds.length);
-          }
-        };
-      }
-    }
+    <!-- Game UI elements -->
+    <div id="timer">0.0s</div>
+    <div id="level-container">
+      <button id="in-game-instructions-btn" aria-label="Instructions">?</button>
+      <div id="level-indicator">
+        <p id="level-text">LEVEL 1 • Easy</p>
+      </div>
+    </div>
+    <div id="progress-container">
+      <div id="progress-bar"></div>
+      <div id="locking-progress"></div>
+      <div id="securing-box">SECURING...</div>
+    </div>
+
+    <!-- Mode selection screen overlay -->
+    <div id="mode-selection-overlay" class="ui-overlay">
+      <div id="mode-selection-content">
+        <h1 id="game-title">PROPRIOCEPTION</h1>
+        <div id="mode-buttons">
+          <button id="standard-mode-btn" class="mode-button">STANDARD</button>
+          <button id="endless-mode-btn" class="mode-button">ENDLESS</button>
+          <button id="instructions-btn" class="mode-button">INSTRUCTIONS</button>
+        </div>
+        <!-- Removed SELECT MODE text -->
+      </div>
+    </div>
+
+    <!-- Game completion overlay -->
+    <div id="complete-overlay" class="ui-overlay">
+      <div id="complete-content">
+        <h2 id="complete-title">ANALYSIS COMPLETE</h2>
+        <table id="scores-table">
+          <thead>
+            <tr>
+              <th>LEVEL</th>
+              <th>TIME</th>
+            </tr>
+          </thead>
+          <tbody id="scores-body">
+            <!-- Scores will be inserted here -->
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td>TOTAL</td>
+              <td id="total-score">0.0 sec.</td>
+            </tr>
+          </tfoot>
+        </table>
+        <button id="restart-button">INITIATE NEW SESSION</button>
+      </div>
+    </div>
+
+    <!-- Error message overlay -->
+    <div id="error-overlay" class="ui-overlay">
+      <div id="error-box">
+        <div id="tracking-error">
+          <p id="error-message">Relevant appendages not detected</p>
+        </div>
+        <div id="camera-error">
+          <p id="camera-error-message">Please enable your webcam</p>
+          <p id="camera-error-detail">Webcam access is required to play this game. Your camera feed is only used
+            locally.</p>
+          <button id="request-permission-btn">GRANT ACCESS</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hint overlay -->
+    <div id="hint-overlay" class="ui-overlay">
+      <div id="hint-box">
+        <span class="corner top-left"></span>
+        <span class="corner top-right"></span>
+        <span class="corner bottom-left"></span>
+        <span class="corner bottom-right"></span>
+        <p id="hint-text">HINT: Try something different</p>
+      </div>
+    </div>
+
+    <!-- Countdown overlay -->
+    <div id="countdown-overlay" class="ui-overlay">
+      <div id="countdown-box">
+        <p id="level-countdown"></p>
+        <div id="countdown-number">3</div>
+      </div>
+    </div>
     
-    // Standard mode levels - predefined progression
-    let levels = [
-      createLevel(['leftHandOverHead']),                     // Level 1: Raise left hand above head (Easy)
-      createLevel(['leftHandPinch']),                        // Level 2: Pinch left thumb and index finger (Easy)
-      createLevel(['mouthOpen', 'wrists']),                  // Level 3: Open mouth and bring wrists together (Medium)
-      createLevel(['leftHandBack', 'rightHandBack']),        // Level 4: Show the back of both hands (Medium)
-      createLevel(['leftHandOverHead', 'mouthOpen', 'wrists']) // Level 5: Triple combo (Hard)
-    ]
-    
-    // Available metrics for endless mode with hints
-    const availableMetrics = [
-      // { 
-      //   id: 'handsOverHead',
-      //   title: 'Raise both hands above head',
-      //   hint: 'Look up'
-      // },
-      { 
-        id: 'leftHandOverHead',
-        title: 'Raise left hand above head',
-        hint: 'Try your left side'
-      },
-      { 
-        id: 'rightHandOverHead',
-        title: 'Raise right hand above head',
-        hint: 'Try your right side'
-      },
-      { 
-        id: 'leftHandPinch',
-        title: 'Pinch left thumb and index finger',
-        hint: 'Use your fingers'
-      },
-      { 
-        id: 'rightHandPinch',
-        title: 'Pinch right thumb and index finger',
-        hint: 'Use your fingers'
-      },
-      { 
-        id: 'mouthOpen',
-        title: 'Open mouth',
-        hint: 'Face expressions'
-      },
-      { 
-        id: 'wrists',
-        title: 'Bring wrists together',
-        hint: 'Move two parts of your body closer to each other'
-      },
-      { 
-        id: 'leftHandBack',
-        title: 'Show back of left hand',
-        hint: 'Experiment with your left hand'
-      },
-      { 
-        id: 'rightHandBack',
-        title: 'Show back of right hand',
-        hint: 'Experiment with your left hand'
-      }
-    ];
-    
-    // Generate all possible metric combinations for endless mode
-    function generateAllEndlessLevels() {
-      const allLevels = [];
-      
-      // First, add all single-metric levels
-      for (let i = 0; i < availableMetrics.length; i++) {
-        const metric = availableMetrics[i];
-        allLevels.push(createLevel([metric.id]));
-      }
-      
-      // Then, add all possible combinations of two metrics
-      for (let i = 0; i < availableMetrics.length; i++) {
-        for (let j = i + 1; j < availableMetrics.length; j++) {
-          const metric1 = availableMetrics[i];
-          const metric2 = availableMetrics[j];
-          allLevels.push(createLevel([metric1.id, metric2.id]));
-        }
-      }
-      
-      return allLevels;
-    }
-    
-    // Get next endless level based on game state
-    function getNextEndlessLevel() {
-      // If there are no endless levels generated yet, create them
-      if (gameState.endlessLevels.length === 0) {
-        gameState.endlessLevels = generateAllEndlessLevels();
-      }
-      
-      let levelIndex;
-      
-      if (gameState.level <= 3) {
-        // First three levels should be single metrics
-        const unusedSingleLevels = gameState.endlessLevels
-          .map((level, index) => ({ level, index }))
-          .filter(item => item.level.metricIds.length === 1)
-          .filter(item => !gameState.usedEndlessLevelIndices.includes(item.index));
-        
-        if (unusedSingleLevels.length === 0) {
-          // This shouldn't happen in the first 3 rounds, but just in case
-          return null;
-        }
-        
-        const randomIndex = Math.floor(Math.random() * unusedSingleLevels.length);
-        levelIndex = unusedSingleLevels[randomIndex].index;
-      } else {
-        // After round 3, use any remaining single metrics or double combinations
-        const unusedLevels = gameState.endlessLevels
-          .map((level, index) => ({ level, index }))
-          .filter(item => !gameState.usedEndlessLevelIndices.includes(item.index));
-        
-        if (unusedLevels.length === 0) {
-          // All levels have been used, end the game
-          return null;
-        }
-        
-        const randomIndex = Math.floor(Math.random() * unusedLevels.length);
-        levelIndex = unusedLevels[randomIndex].index;
-      }
-      
-      // Mark this level as used
-      gameState.usedEndlessLevelIndices.push(levelIndex);
-      
-      return gameState.endlessLevels[levelIndex];
-    }
-
-    function preload() {
-      // TODO at least faceMesh has a maxFaces option, which would be nice to use
-      // (and show error message around??)
-      handPose = ml5.handPose({ flipped: true });
-      bodyPose = ml5.bodyPose("BlazePose", { flipped: true });
-      faceMesh = ml5.faceMesh({ flipped: true, refineLandmarks: true });
-    }
-
-    function setup() {
-      createCanvas(640, 480);
-
-      // Create video and hide it
-      video = createCapture(VIDEO, { flipped: true });
-      video.size(640, 480);
-      video.hide();
-
-      handPose.detectStart(video, gotHands);
-      bodyPose.detectStart(video, gotBodies);
-      faceMesh.detectStart(video, gotFaces);
-
-      // Set text to bold by default
-      textStyle(BOLD);
-      
-      resetGame();
-    }
-
-    function gotHands(results) {
-      hands = results;
-    }
-
-    function gotBodies(results) {
-      bodies = results;
-    }
-
-    function gotFaces(results) {
-      faces = results;
-    }
-
-    function computeMetrics() {
-      // Create metrics instance, initializing with titles and calced=false
-      const metrics = {};
-      for (const key in metricsDefinition) {
-        metrics[key] = {
-          title: metricsDefinition[key].title,
-          calced: false
-        };
-      }
-
-      if (hands) {
-        for (let i = 0; i < hands.length; i++) {
-          const hand = hands[i];
-          const thumbTip = hand?.thumb_tip;
-          const indexTip = hand?.index_finger_tip;
-          
-          // We need these points for hand orientation calculation
-          const wrist = hand?.wrist;
-          const middleBase = hand?.middle_finger_mcp; // Middle finger metacarpophalangeal joint (base)
-          const indexBase = hand?.index_finger_mcp;   // Index finger base
-          const pinkyBase = hand?.pinky_finger_mcp;   // Pinky finger base
-
-          if (hand.confidence > 0.9 && thumbTip && indexTip) {
-            if (hand.handedness === "Left") {
-              metrics.leftHandPinch.calced = true;
-              metrics.leftHandPinch.twoD = calculate2DDistance(thumbTip, indexTip);
-              metrics.leftHandPinch.threeD = calculateHand3DDistance(thumbTip, indexTip);
-            } else if (hand.handedness === "Right") {
-              metrics.rightHandPinch.calced = true;
-              metrics.rightHandPinch.twoD = calculate2DDistance(thumbTip, indexTip);
-              metrics.rightHandPinch.threeD = calculateHand3DDistance(thumbTip, indexTip);
-            }
-          }
-          
-          // Calculate hand back metrics when all required points are available
-          if (hand.confidence > 0.9 && wrist && middleBase && indexBase && pinkyBase) {
-            // Calculate a vector normal to the palm plane using cross product
-            // First we create vectors along the palm
-            const v1 = {
-              x: indexBase.x3D - wrist.x3D,
-              y: indexBase.y3D - wrist.y3D,
-              z: indexBase.z3D - wrist.z3D
-            };
-            
-            const v2 = {
-              x: pinkyBase.x3D - wrist.x3D,
-              y: pinkyBase.y3D - wrist.y3D,
-              z: pinkyBase.z3D - wrist.z3D
-            };
-
-            
-            // Cross product gives normal vector to palm
-            const normal = {
-              x: v1.y * v2.z - v1.z * v2.y,
-              y: v1.z * v2.x - v1.x * v2.z,
-              z: v1.x * v2.y - v1.y * v2.x
-            };
-            
-            // Normalize the vector (z component is what we care about)
-            const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-            normal.z = normal.z / length;
-            
-            // The normal.z value indicates palm orientation:
-            // Positive: palm facing camera
-            // Negative: back of hand facing camera
-            // Range is roughly -1 to 1
-            
-            if (hand.handedness === "Left") {
-              metrics.leftHandBack.calced = true;
-              metrics.leftHandBack.orientation = normal.z;
-            } else if (hand.handedness === "Right") {
-              metrics.rightHandBack.calced = true;
-              // Invert so positive means back of hand to camera
-              metrics.rightHandBack.orientation = - normal.z;
-            }
-          }
-        }
-      }
-
-      if (bodies && bodies.length > 0) {
-        const body = bodies[0];
-        const leftWrist = body?.left_wrist;
-        const rightWrist = body?.right_wrist;
-
-        if ((leftWrist && leftWrist.confidence > 0.5) && (rightWrist && rightWrist.confidence > 0.5)) {
-          metrics.wrists.calced = true;
-          metrics.wrists.twoD = calculate2DDistance(leftWrist, rightWrist);
-          metrics.wrists.threeD = calculateBody3DDistance(leftWrist, rightWrist);
-        }
-
-        const nose = body?.nose;
-
-        if (nose && nose.confidence > 0.9) {
-          // Individual hands over head
-          if (leftWrist && leftWrist.confidence > 0.9) {
-            metrics.leftHandOverHead.calced = true;
-            metrics.leftHandOverHead.twoD = nose.y - leftWrist.y;
-          }
-          
-          if (rightWrist && rightWrist.confidence > 0.9) {
-            metrics.rightHandOverHead.calced = true;
-            metrics.rightHandOverHead.twoD = nose.y - rightWrist.y;
-          }
-          
-          // // Both hands over head (average height)
-          // if ((leftWrist && leftWrist.confidence > 0.9) && (rightWrist && rightWrist.confidence > 0.9)) {
-          //   metrics.handsOverHead.calced = true;
-          //   const averageWristHeight = (leftWrist.y + rightWrist.y) / 2;
-          //   metrics.handsOverHead.twoD = nose.y - averageWristHeight;
-          // }
-        }
-
-      }
-
-      if (faces && faces.length > 0) {
-        const face = faces[0];
-        // if (Math.random() < 0.1) {
-        //   console.log(face);
-        // }
-        // console.log(face);
-
-        // it's a little tricky to get a 3d distance for the face,
-        // because the points are always given x/y/z which I'm not really sure how to make sense of.
-        // but the effect is that using the 3d distance seems to scale when I approach camera,
-        // which is not what I want. instead, I'll use the ratio of height of lips to width of lips
-        // to get a sense of open/closed.
-        if (face.lips) {
-          metrics.mouthOpen.calced = true;
-          metrics.mouthOpen.ratio = face.lips?.height / face.lips?.width * 100.;
-        }
-
-        // TODO note this doesn't really work yet. rotating the head screws it up dramatically,
-        // which I think is because x / y are projections onto the screen (how we're seeing them...)
-        // I think I need to read more about how to project them into space.
-        // mouth seems to have this issue to a much lesser degree.
-        if (face.leftEye && face.rightEye) {
-          // yipes. these are using indexes from: https://github.com/lschmelzeisen/understanding-mediapipe-facemesh-output/tree/main
-          const rightEyeInsideCorner = face.keypoints[133];
-          const rightEyeOutsideCorner = face.keypoints[33];
-          const rightEye = calculateFaceAveragePoint(rightEyeInsideCorner, rightEyeOutsideCorner);
-          const rightEyebrowMidInside = face.keypoints[65];
-          const rightEyebrowMidOutside = face.keypoints[52];
-          const rightEyebrow = calculateFaceAveragePoint(rightEyebrowMidInside, rightEyebrowMidOutside);
-          const rightEyebrowDist = calculateFace3DDistance(rightEyebrowMidInside, rightEyebrowMidOutside);
-
-          const leftEyeInsideCorner = face.keypoints[362];
-          const leftEyeOutsideCorner = face.keypoints[263];
-          const leftEye = calculateFaceAveragePoint(leftEyeInsideCorner, leftEyeOutsideCorner);
-          const leftEyebrowMidInside = face.keypoints[295];
-          const leftEyebrowMidOutside = face.keypoints[282];
-          const leftEyebrow = calculateFaceAveragePoint(leftEyebrowMidInside, leftEyebrowMidOutside);
-          const leftEyebrowDist = calculateFace3DDistance(leftEyebrowMidInside, leftEyebrowMidOutside);
-
-          // console.log({rightEyebrowDist, leftEyebrowDist});
-
-          metrics.eyebrowRaised.ratio = leftEyebrowDist / rightEyebrowDist * 100;
-          metrics.eyebrowRaised.calced = true;
-        }
-      }
-      
-      // Calculate scores for all metrics
-      for (const key in metrics) {
-        if (metrics[key].calced) {
-          metrics[key].score = metricsDefinition[key].calculateScore(metrics[key]);
-        } else {
-          metrics[key].score = null;
-        }
-      }
-
-      return metrics;
-    }
-
-    function drawAllPoints() {
-      if (hands) {
-        for (let i = 0; i < hands.length; i++) {
-          const hand = hands[i];
-          drawKeypoints(hand);
-          drawHandSkeleton(hand);
-        }
-      }
-      if (bodies) {
-        for (let i = 0; i < bodies.length; i++) {
-          const body = bodies[i];
-          drawKeypoints(body);
-        }
-      }
-      if (faces) {
-        for (let i = 0; i < faces.length; i++) {
-          const face = faces[i];
-          // drawKeypoints(face.lips);
-          // drawKeypoints(face.leftEye);
-          // drawKeypoints(face.leftEyebrow);
-        }
-      }
-    }
-
-    function drawAllMetrics(metrics) {
-      const metricStrs = [];
-      for (const key in metrics) {
-        const metric = metrics[key];
-        if (metric.calced) {
-          metricStr = "";
-          if (metric.twoD != null) {
-            metricStr += "2D: " + Math.round(metric.twoD) + "; ";
-          }
-          if (metric.threeD != null) {
-            metricStr += "3D: " + Math.round(metric.threeD) + "; ";
-          }
-          if (metric.ratio != null) {
-            metricStr += "Ratio: " + Math.round(metric.ratio) + "; ";
-          }
-          if (metric.orientation != null) {
-            metricStr += "Orient: " + metric.orientation.toFixed(2) + "; ";
-          }
-          if (metric.score != null) {
-            metricStr += "Score: " + metric.score.toFixed(2);
-          }
-          metricStrs.push(metric.title + ": " + metricStr);
-        } else {
-          metricStrs.push(metric.title + ": Not available");
-        }
-      }
-
-      drawDistanceBox(metricStrs);
-    }
-
-    // Helper function to get hints for the current level
-    function getHintForCurrentLevel() {
-      // If we already have a hint for this level, return it
-      if (gameState.currentHint) {
-        return gameState.currentHint;
-      }
-      
-      let currentMetricIds = [];
-      
-      if (gameState.mode === 'standard') {
-        const levelIndex = gameState.level - 1;
-        currentMetricIds = levels[levelIndex].metricIds;
-      } else if (gameState.mode === 'endless' && currentEndlessLevel) {
-        currentMetricIds = currentEndlessLevel.metricIds;
-      }
-      
-      let hint = null;
-      
-      // If there's only one metric, return its hint
-      if (currentMetricIds.length === 1) {
-        const metricId = currentMetricIds[0];
-        const metricInfo = availableMetrics.find(m => m.id === metricId);
-        hint = metricInfo ? metricInfo.hint : "Try something different";
-      } 
-      // For multiple metrics, return a more generic hint or randomly select one of the metrics' hints
-      else if (currentMetricIds.length > 1) {
-        // Randomly select one of the metrics to hint about (but do it only once per level)
-        const randomMetricId = currentMetricIds[Math.floor(Math.random() * currentMetricIds.length)];
-        const metricInfo = availableMetrics.find(m => m.id === randomMetricId);
-        hint = metricInfo ? metricInfo.hint : "Try combining movements";
-      }
-      
-      // Store the hint so it remains consistent for this level
-      gameState.currentHint = hint;
-      return hint;
-    }
-    
-    function draw() {
-      image(video, 0, 0, width, height);
-
-      const metrics = computeMetrics();
-
-      // Only show debugging info if debug mode is enabled
-      if (debugMode) {
-        drawAllMetrics(metrics);
-        drawAllPoints();
-      }
-
-      // Reset text style to bold for game UI after potential debug drawing
-      textStyle(BOLD);
-      
-      // Add overlay for text readability when needed
-      if (!gameState.playing) {
-        // Simple semi-transparent dark overlay
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(0, 0, width, height);
-      }
-
-      // Check if we should show a hint (30 seconds on a level)
-      if (gameState.playing && !gameState.hintShown) {
-        const levelTimeSeconds = (millis() - gameState.levelStartTime) / 1000;
-        if (levelTimeSeconds > 30) {
-          gameState.showHint = true;
-          gameState.hintShown = true;
-        }
-      }
-
-      // show game state
-      if (!gameState.started) {
-        if (gameState.menuScreen) {
-          // Mode selection screen
-          push();
-          fill(255);
-          textSize(42);
-          textAlign(CENTER, CENTER);
-          text("PROPRIOCEPTION", width / 2, height / 2 - 80);
-          
-          // Draw mode selection buttons
-          const buttonWidth = 160;
-          const buttonHeight = 50;
-          const buttonSpacing = 20;
-          const buttonY = height / 2 + 20;
-          
-          // Standard mode button
-          const standardX = width / 2 - buttonWidth - buttonSpacing/2;
-          fill(80, 80, 80);
-          stroke(255);
-          strokeWeight(2);
-          rect(standardX, buttonY, buttonWidth, buttonHeight, 8);
-          
-          // Endless mode button
-          const endlessX = width / 2 + buttonSpacing/2;
-          fill(80, 80, 80);
-          stroke(255);
-          strokeWeight(2);
-          rect(endlessX, buttonY, buttonWidth, buttonHeight, 8);
-          
-          // Button text
-          noStroke();
-          fill(255);
-          textSize(20);
-          textAlign(CENTER, CENTER);
-          text("STANDARD", standardX + buttonWidth/2, buttonY + buttonHeight/2);
-          text("ENDLESS", endlessX + buttonWidth/2, buttonY + buttonHeight/2);
-          
-          // Instructions
-          textSize(16);
-          fill(200, 200, 200);
-          text("Click to select game mode", width / 2, buttonY + buttonHeight + 30);
-          pop();
-          
-          // Check for button clicks
-          if (mouseIsPressed) {
-            if (mouseX > standardX && mouseX < standardX + buttonWidth &&
-                mouseY > buttonY && mouseY < buttonY + buttonHeight) {
-              // Standard mode selected
-              startGame('standard');
-              startCountdown();
-            } else if (mouseX > endlessX && mouseX < endlessX + buttonWidth &&
-                     mouseY > buttonY && mouseY < buttonY + buttonHeight) {
-              // Endless mode selected
-              startGame('endless');
-              startCountdown();
-            }
-          }
-        } else {
-          // Title and start screen - more understated
-          push();
-          fill(255);
-          textSize(42);
-          textAlign(CENTER, CENTER);
-          text("PROPRIOCEPTION", width / 2, height / 2 - 30);
-          
-          // Instructions - simple white text
-          textSize(24);
-          text("Press any key to start", width / 2, height / 2 + 40);
-          
-          // Debug info - smaller and less obtrusive
-          // textSize(14);
-          // fill(180, 180, 180);
-          // text("Press 'D' to toggle debug view", width / 2, height - 20);
-          pop();
-        }
-      } else if (gameState.ended) {
-        // Game over screen - more understated
-        push();
-        fill(255);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        text("Game Complete", width / 2, height / 2 - 80);
-        
-        // Display scores in a clean, minimal format
-        noStroke();
-        
-        textSize(20);
-        textAlign(RIGHT, CENTER);
-        text("LEVEL", width/2 - 100, height/2 - 40);
-        text("TIME", width/2 + 100, height/2 - 40);
-        
-        // Display scores for each level
-        fill(255);
-        textSize(18);
-        let scoreY = height / 2;
-        
-        for (let level in gameState.scores) {
-          textAlign(RIGHT, CENTER);
-          text(level, width/2 - 100, scoreY);
-          textAlign(LEFT, CENTER);
-          text(gameState.scores[level] + " sec.", width/2 + 20, scoreY);
-          scoreY += 26;
-        }
-        
-        // Display total score - aligned with level scores
-        fill(255);
-        textSize(18);
-        textAlign(RIGHT, CENTER);
-        text("TOTAL", width/2 - 100, scoreY);
-        textAlign(LEFT, CENTER);
-        text(gameState.totalScore + " sec.", width/2 + 20, scoreY);
-        
-        // Add instruction to press key to restart (positioned at fixed distance from bottom)
-        textSize(18);
-        text("Press any key to play again", width / 2, height - 40);
-        pop();
-      } else if (gameState.countdown) {
-        // Handle countdown
-        const elapsedTime = millis() - gameState.countdownStartTime;
-        const countdownSeconds = 3 - Math.floor(elapsedTime / 1000);
-        
-        if (countdownSeconds <= 0) {
-          // Countdown finished, start level
-          gameState.countdown = false;
-          startLevel();
-        } else {
-          push();
-          // Level title - simple, clean
-          fill(255);
-          textSize(24);
-          textAlign(CENTER, CENTER);
-          
-          // Just show the level number, no titles
-          text("Level " + gameState.level, width / 2, height / 2 - 40);
-          
-          // Make sure we have a current endless level if needed
-          if (gameState.mode === 'endless' && !currentEndlessLevel && gameState.level === 1) {
-            currentEndlessLevel = getNextEndlessLevel();
-          }
-          
-          // Countdown number - simple, no effects
-          textSize(60);
-          text(countdownSeconds, width / 2, height / 2 + 20);
-          pop();
-        }
-      } else {
-        // Get the current level and progress function based on mode
-        let progressFunction;
-        let rawProgress;
-        
-        if (gameState.mode === 'standard') {
-          // Standard mode - get level from predefined array
-          const levelIndex = gameState.level - 1;
-          const level = levels[levelIndex];
-          progressFunction = level.progressFunction;
-        } else if (gameState.mode === 'endless') {
-          // Endless mode - use current endless level
-          progressFunction = currentEndlessLevel.progressFunction;
-        }
-        
-        // Calculate progress
-        rawProgress = progressFunction(metrics);
-        
-        // Apply smoothing to progress value
-        const smoothedProgress = smoothProgress(rawProgress);
-        const progress = smoothedProgress;
-        
-        // Handle lock-in logic for pose holding
-        if (progress >= 1) {
-          // If we hit 100% and aren't already locking in, start the lock-in
-          if (!gameState.lockingIn) {
-            gameState.lockingIn = true;
-            gameState.lockInStartTime = millis();
-          } else {
-            // We're already in lock-in state, check if we've held long enough
-            const currentTime = millis();
-            const lockInElapsed = currentTime - gameState.lockInStartTime;
-            
-            // If we've held the pose long enough, complete the level
-            if (lockInElapsed >= gameState.lockInDuration) {
-              nextLevel();
-              return;
-            }
-          }
-        } else {
-          // If progress drops below 100%, cancel the lock-in
-          if (gameState.lockingIn) {
-            gameState.lockingIn = false;
-          }
-        }
-        // Display level and current time - minimal design
-        const currentTime = ((millis() - gameState.levelStartTime) / 1000).toFixed(1);
-        
-        // Get current level difficulty
-        let difficulty = "Easy";
-        let currentMetricIds = [];
-        
-        if (gameState.mode === 'standard') {
-          const levelIndex = gameState.level - 1;
-          currentMetricIds = levels[levelIndex].metricIds;
-        } else if (gameState.mode === 'endless' && currentEndlessLevel) {
-          currentMetricIds = currentEndlessLevel.metricIds;
-        }
-        
-        // Set difficulty based on number of metrics
-        if (currentMetricIds.length === 2) {
-          difficulty = "Medium";
-        } else if (currentMetricIds.length >= 3) {
-          difficulty = "Hard";
-        }
-        
-        // Simple text without box for timer - left side
-        push();
-        fill(255);
-        textSize(20);
-        textAlign(LEFT, TOP);
-        text(currentTime + "s", 20, 20);
-        
-        // Level indicator with difficulty in top right
-        textAlign(RIGHT, TOP);
-        text("Level " + gameState.level + " • " + difficulty, width - 20, 20);
-        pop();
-        
-        if (progress != null) {
-          // Show progress bar
-          textSize(32);
-          textAlign(CENTER, CENTER);
-          drawProgressBar(progress);
-          
-          // Show hint if needed
-          if (gameState.showHint) {
-            push();
-            fill(255, 255, 0);
-            textSize(24);
-            textAlign(CENTER, CENTER);
-            text("Hint: " + getHintForCurrentLevel(), width / 2, height - 80);
-            pop();
-          }
-        } else {
-          fill(255);
-          textSize(32);
-          textAlign(CENTER, CENTER);
-          text("Relevant body parts not detected", width / 2, height / 2);
-        }
-      }
-    }
-
-    // Removed overlay functions to fix visual issues
-    
-    function drawProgressBar(progress) {
-      const barWidth = 300;
-      const barHeight = 16; // Made thicker (was 8)
-      const barX = (width - barWidth) / 2;
-      const barY = height - 40;
-
-      push();
-      
-      // Draw background
-      noStroke();
-      fill(255, 255, 255, 40);
-      rect(barX, barY, barWidth, barHeight, 4);
-
-      // Draw the progress bar - simple, modern
-      fill(255);
-      rect(barX, barY, barWidth * progress, barHeight, 4);
-      
-      // Draw lock-in animation if actively locking in
-      if (gameState.lockingIn) {
-        const currentTime = millis();
-        let lockInProgress = (currentTime - gameState.lockInStartTime) / gameState.lockInDuration;
-        
-        // Quick ease-in at the beginning, longer ease-out at the end
-        // Using a custom easing function to achieve the desired effect
-        if (lockInProgress < 0.2) {
-          // First 20% - accelerate quickly (quadratic ease-in)
-          lockInProgress = (lockInProgress / 0.2) * (lockInProgress / 0.2) * 0.3;
-        } else {
-          // Remaining 80% - decelerate more gradually (cubic ease-out)
-          lockInProgress = 0.3 + 0.7 * (1 - Math.pow(1 - ((lockInProgress - 0.2) / 0.8), 3));
-        }
-        
-        // Calculate the width of the sliding green bar
-        const greenBarWidth = barWidth * lockInProgress;
-        
-        // Draw the sliding green bar on top of the white progress bar
-        noStroke();
-        fill(50, 220, 50); // Bright green
-        rect(barX, barY, greenBarWidth, barHeight, 4);
-      }
-      
-      pop();
-    }
-
-    function drawKeypoints(obj) {
-      for (let j = 0; j < obj.keypoints.length; j++) {
-        let keypoint = obj.keypoints[j];
-        if (keypoint.confidence < 0.9) {
-          continue;
-        }
-        fill(0, 255, 0);
-        noStroke();
-        circle(keypoint.x, keypoint.y, 10);
-      }
-    }
-    function calculate2DDistance(point1, point2) {
-      const dx = point1.x - point2.x;
-      const dy = point1.y - point2.y;
-      return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    function calculateHand3DDistance(point1, point2) {
-      const dx = point1.x3D - point2.x3D;
-      const dy = point1.y3D - point2.y3D;
-      const dz = point1.z3D - point2.z3D;
-      return Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.;
-    }
-
-    function calculateBody3DDistance(point1, point2) {
-      const dx = point1.keypoint3D.x - point2.keypoint3D.x;
-      const dy = point1.keypoint3D.y - point2.keypoint3D.y;
-      const dz = point1.keypoint3D.z - point2.keypoint3D.z;
-      return Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.;
-    }
-
-    function calculateFace3DDistance(point1, point2) {
-      // I think this is a little funny, or at least maybe should only be used for ratios.
-      // not sure how to interpret z.
-      const dx = point1.x - point2.x;
-      const dy = point1.y - point2.y;
-      const dz = point1.z - point2.z;
-      return Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.;
-    }
-
-    function calculateFaceAveragePoint(point1, point2) {
-      const x = (point1.x + point2.x) / 2;
-      const y = (point1.y + point2.y) / 2;
-      const z = (point1.z + point2.z) / 2;
-      return { x, y, z };
-    }
-
-    // function calculateFace3DDistance(point1, point2) {
-    //   const dx = point1.x - point2.x;
-    //   const dy = point1.y - point2.y;
-    //   const dz = point1.z - point2.z;
-    //   return Math.sqrt(dx * dx + dy * dy + dz * dz) * 100.;
-    // }
-
-    function drawDistanceBox(distanceStrs) {
-      // Box parameters
-      const padding = 10;
-      const lineHeight = 16; // Smaller line height for smaller text
-      const boxWidth = 300;
-      const boxHeight = padding * 2 + lineHeight * distanceStrs.length;
-      const boxX = 20;
-      const boxY = 20;
-
-      // Draw box with semi-transparent background
-      push();
-      fill(0, 0, 0, 230);    // More opaque background
-      stroke(255, 255, 0);   // Yellow border
-      strokeWeight(3);       // Thicker border
-      rect(boxX, boxY, boxWidth, boxHeight, 10);  // Rounded corners
-
-      // Draw text - not bold and smaller
-      fill(255);             // White text
-      noStroke();
-      textStyle(NORMAL);     // Non-bold text for metrics
-      textSize(14);          // Smaller text size
-      textAlign(LEFT, TOP);
-
-      // Show each distance string
-      for (let i = 0; i < distanceStrs.length; i++) {
-        text(distanceStrs[i], boxX + padding, boxY + padding + i * lineHeight);
-      }
-      pop();
-    }
-
-    function drawHandSkeleton(hand) {
-      // Define finger connections
-      const fingerConnections = [
-        // Thumb [connections]
-        [0, 1, 2, 3, 4],
-        // Index finger 
-        [0, 5, 6, 7, 8],
-        // Middle finger
-        [0, 9, 10, 11, 12],
-        // Ring finger
-        [0, 13, 14, 15, 16],
-        // Pinky
-        [0, 17, 18, 19, 20]
-      ];
-
-      // Define colors for each finger
-      const colors = [
-        [255, 0, 0],      // thumb (red)
-        [0, 255, 0],      // index (green)
-        [0, 0, 255],      // middle (blue)
-        [255, 255, 0],    // ring (yellow)
-        [255, 0, 255]     // pinky (magenta)
-      ];
-
-      // Draw each finger
-      for (let i = 0; i < fingerConnections.length; i++) {
-        const points = fingerConnections[i];
-        const color = colors[i];
-
-        stroke(color[0], color[1], color[2]);
-        strokeWeight(2);
-
-        // Draw lines connecting each point in the finger
-        for (let j = 0; j < points.length - 1; j++) {
-          const keypoint1 = hand.keypoints[points[j]];
-          const keypoint2 = hand.keypoints[points[j + 1]];
-
-          if (keypoint1 && keypoint2) {
-            line(keypoint1.x, keypoint1.y, keypoint2.x, keypoint2.y);
-          }
-        }
-      }
-    }
-
-    function smoothProgress(rawProgress) {
-      // Handle null value
-      if (rawProgress === null) {
-        gameState.progressHistory = []; // Clear history when detection is lost
-        return null;
-      }
-      
-      // Add current value to history
-      gameState.progressHistory.push(rawProgress);
-      
-      // Limit history size
-      if (gameState.progressHistory.length > gameState.progressHistorySize) {
-        gameState.progressHistory.shift(); // Remove oldest value
-      }
-      
-      // Calculate simple weighted average - newer values have more weight
-      let totalWeight = 0;
-      let weightedSum = 0;
-      
-      for (let i = 0; i < gameState.progressHistory.length; i++) {
-        // Simple linear weighting - newer values count more
-        const weight = i + 1;
-        weightedSum += gameState.progressHistory[i] * weight;
-        totalWeight += weight;
-      }
-      
-      return weightedSum / totalWeight;
-    }
-    
-    // Current endless mode level (for reference)
-    let currentEndlessLevel = null;
-    
-    function resetGame() {
-      gameState.started = false;
-      gameState.level = 1;
-      gameState.ended = false;
-      gameState.countdown = false;
-      gameState.playing = false;
-      gameState.scores = {};
-      gameState.totalScore = 0;
-      gameState.progressHistory = [];
-      gameState.menuScreen = true;
-      gameState.mode = null;
-      gameState.endlessLevels = [];
-      gameState.usedEndlessLevelIndices = [];
-      gameState.showHint = false;
-      gameState.hintShown = false;
-      gameState.currentHint = null;
-      gameState.lockingIn = false;
-      gameState.lockInStartTime = 0;
-      currentEndlessLevel = null;
-    }
-
-    function startGame(mode) {
-      gameState.started = true;
-      gameState.menuScreen = false;
-      gameState.mode = mode;
-      
-      // For endless mode, generate all levels if not already done
-      if (mode === 'endless' && gameState.endlessLevels.length === 0) {
-        gameState.endlessLevels = generateAllEndlessLevels();
-      }
-    }
-
-    function endGame() {
-      // Calculate score for final level
-      const levelTime = (millis() - gameState.levelStartTime) / 1000;
-      gameState.scores[gameState.level] = levelTime.toFixed(2);
-      gameState.totalScore += parseFloat(levelTime);
-      gameState.totalScore = gameState.totalScore.toFixed(2); // Format total to 2 decimal places
-      
-      gameState.playing = false; // Make sure playing is set to false
-      gameState.ended = true;
-    }
-
-    function startLevel() {
-      gameState.playing = true;
-      gameState.levelStartTime = millis();
-      gameState.progressHistory = []; // Reset progress history for new level
-      gameState.showHint = false;
-      gameState.hintShown = false;
-      gameState.currentHint = null; // Reset hint for new level
-      gameState.lockingIn = false;  // Reset lock-in state
-      gameState.lockInStartTime = 0;
-    }
-
-    function startCountdown() {
-      gameState.countdown = true;
-      gameState.countdownStartTime = millis();
-    }
-
-    function nextLevel() {
-      // Calculate and store score for the completed level
-      const levelTime = (millis() - gameState.levelStartTime) / 1000; // Convert to seconds
-      gameState.scores[gameState.level] = levelTime.toFixed(2);
-      gameState.totalScore += parseFloat(levelTime);
-      
-      // Move to next level
-      gameState.level++;
-      gameState.playing = false;
-      
-      if (gameState.mode === 'endless') {
-        // Get the next endless level
-        currentEndlessLevel = getNextEndlessLevel();
-        
-        // If there are no more levels, end the game
-        if (currentEndlessLevel === null) {
-          endGame();
-          return;
-        }
-      } else if (gameState.mode === 'standard') {
-        // End the game if we've completed all standard levels
-        if (gameState.level > levels.length) {
-          endGame();
-          return;
-        }
-      }
-      
-      startCountdown();
-    }
-
-    function restartGame() {
-      resetGame();
-      // Go back to the menu screen
-    }
-    
-    function keyPressed() {
-      // Toggle debug mode with 'd' key regardless of game state
-      if (key === 'd' || key === 'D') {
-        debugMode = !debugMode;
-        return;
-      }
-      
-      // Handle restart after game over
-      if (gameState.ended) {
-        restartGame();
-        return;
-      }
-      
-      // Don't proceed if already playing or counting down
-      if (gameState.playing || gameState.countdown) {
-        return;
-      }
-      
-      // Starting a new game or level
-      if (!gameState.started && !gameState.menuScreen) {
-        // Only start with key press if we're not on the menu screen
-        startGame(gameState.mode || 'standard');
-        startCountdown();
-      } else if (gameState.started) {
-        startCountdown();
-      }
-      // Note: on menu screen, clicks handle mode selection, not key presses
-    }
-  </script>
+    <!-- Instructions overlay -->
+    <div id="instructions-overlay" class="ui-overlay">
+      <div id="instructions-content">
+        <h2 id="instructions-title">INSTRUCTIONS</h2>
+        <div id="instructions-text">
+          <p>You're in-shop for some proprioceptive issues you've been experiencing. We've replaced some of your on-board sensors, but to clear you, we need to run a clearance diagnostic.</p>
+          <p>The test requires you to manipulate your form to match the objective. For instance: raise your arms above or your head, or make a fist. But there's a catch: you will not be told the objective explicitly. You must infer it from feedback given in the form of a progress bar. Once you've filled the progress bar, hold the pose for a couple seconds to confirm and proceed to the next level. As the test proceeds, you will need to perform multiple actions simulateously.</p>
+          <p>Note: in order to perform this test, we require your video feed, but it's only used locally.</p>
+          <p class="attribution">made by <a href="https://lincoln.swaine-moore.is/blue" target="_blank">lincoln</a> (+ claude + p5.js / ml5.js)</p>
+        </div>
+        <button id="close-instructions-btn">CLOSE</button>
+      </div>
+    </div>
+  </div>
+  <script src="./script.js"></script>
 </body>
 
 </html>

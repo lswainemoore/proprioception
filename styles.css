@@ -1,0 +1,777 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #111;
+  font-family: "Recursive", monospace;
+  color: #0cf;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* App container - fills viewport */
+#app-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Canvas container for responsive sizing */
+#canvas-container {
+  position: relative;
+  max-width: 100%;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
+  overflow: hidden;
+  border: 2px solid #0cf;
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.5);
+  border-radius: 5px;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100vh;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 auto;
+}
+
+/* Dashboard frame container */
+#dashboard-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Allow clicks to pass through to canvas */
+}
+
+/* Decorative dashboard elements */
+.frame-corner {
+  position: absolute;
+  width: 5%;
+  height: 5%;
+  max-width: 50px;
+  max-height: 50px;
+  border: 2px solid #0cf;
+  z-index: 10;
+  opacity: 0.8;
+}
+
+.top-left {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.top-right {
+  top: -2px;
+  right: -2px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.bottom-left {
+  bottom: -2px;
+  left: -2px;
+  border-right: none;
+  border-top: none;
+}
+
+.bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+}
+
+/* UI Overlays */
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  /* By default overlays don't capture clicks */
+  z-index: 20;
+  opacity: 0;
+  /* Hidden by default */
+  transition: opacity 0.3s ease;
+}
+
+#mode-selection-overlay {
+  flex-direction: column;
+  background-color: rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+  /* Enable interactions */
+}
+
+#game-title {
+  color: #0cf;
+  font-size: clamp(28px, 8vw, 42px);
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+#mode-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.mode-button {
+  background: rgba(0, 20, 40, 0.5);
+  border: 2px solid #0cf;
+  color: #0cf;
+  padding: 12px 25px;
+  font-family: "Recursive", sans-serif;
+  font-size: clamp(14px, 3vw, 20px);
+  border-radius: 2px;
+  min-width: 160px;
+  cursor: pointer;
+  position: relative;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
+}
+
+.mode-button:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.mode-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+}
+
+.mode-button::before,
+.mode-button::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  z-index: 5;
+}
+
+.mode-button::before {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+.mode-button::after {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
+}
+
+#mode-instruction {
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 10px;
+  font-size: clamp(12px, 3vw, 16px);
+  opacity: 0.7;
+}
+
+/* Error message overlay */
+#error-overlay {
+  pointer-events: none; /* Set back to None to fix buttons beneath it */
+}
+
+#error-box {
+  border: 2px solid rgba(255, 150, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 20px 30px;
+  border-radius: 5px;
+  text-align: center;
+  max-width: 560px; /* Match video width (640px) minus some padding */
+  width: 100%;
+}
+
+#error-message {
+  color: rgb(255, 200, 100);
+  font-size: clamp(16px, 4vw, 22px);
+  margin: 0;
+}
+
+/* Camera error content */
+#camera-error {
+  display: none;
+}
+
+#camera-error-message {
+  color: rgb(255, 100, 100);
+  font-size: clamp(16px, 4vw, 22px);
+  margin: 0 0 10px 0;
+}
+
+/* Only enable interactions on the request permission button */
+#request-permission-btn {
+  pointer-events: auto;
+  background: rgba(0, 20, 40, 0.5);
+  border: 2px solid #0cf;
+  color: #0cf;
+  padding: 12px 25px;
+  font-family: "Recursive", sans-serif;
+  font-size: clamp(14px, 3vw, 16px);
+  border-radius: 2px;
+  cursor: pointer;
+  width: 100%;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
+  position: relative;
+  margin-top: 15px;
+}
+
+#request-permission-btn:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}
+
+#camera-error-detail {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(14px, 3vw, 16px);
+  margin-bottom: 10px;
+}
+
+#request-permission-btn {
+  background: rgba(0, 20, 40, 0.5);
+  border: 2px solid #0cf;
+  color: #0cf;
+  padding: 12px 25px;
+  font-family: "Recursive", sans-serif;
+  font-size: clamp(14px, 3vw, 16px);
+  border-radius: 2px;
+  cursor: pointer;
+  width: 100%;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
+  position: relative;
+  pointer-events: auto;
+}
+
+#request-permission-btn:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}
+
+/* Hint overlay */
+#hint-overlay {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  z-index: 20;
+}
+
+#hint-box {
+  border: 2px solid #0cf;
+  background-color: rgba(0, 20, 40, 0.7);
+  padding: 10px 20px;
+  border-radius: 2px;
+  max-width: 80%;
+  position: fixed; /* Use fixed position to ignore container constraints */
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.3);
+  /* Position precisely in the middle of the lower half of the screen */
+  bottom: 20vh; /* 20% from the bottom of the viewport */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100; /* Ensure it's above other elements */
+}
+
+/* Corners for hint box */
+#hint-box .corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  z-index: 5;
+}
+
+#hint-box .top-left {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+#hint-box .top-right {
+  top: -2px;
+  right: -2px;
+  border-top: 2px solid #0cf;
+  border-right: 2px solid #0cf;
+}
+
+#hint-box .bottom-left {
+  bottom: -2px;
+  left: -2px;
+  border-bottom: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+#hint-box .bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
+}
+
+#hint-text {
+  color: #0cf;
+  font-size: clamp(14px, 3vw, 16px);
+  text-align: center;
+  margin: 0;
+  letter-spacing: 1px;
+  text-shadow: 0 0 5px rgba(0, 204, 255, 0.5);
+}
+
+/* Loading screen styles */
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0a1012;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: opacity 0.5s ease-out;
+}
+
+#loading-text {
+  font-family: "Recursive", sans-serif;
+  font-size: clamp(18px, 5vw, 24px);
+  color: #0cf;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+#loading-spinner {
+  width: clamp(40px, 10vw, 60px);
+  height: clamp(40px, 10vw, 60px);
+  border: 3px solid rgba(0, 204, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #0cf;
+  animation: spin 1s ease-in-out infinite;
+}
+
+/* Game status indicators */
+#level-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Space between help button and level indicator */
+  z-index: 35; /* Higher than overlays */
+}
+
+#level-indicator {
+  background-color: rgba(0, 0, 0, 0.6);
+  border: 1px solid #0cf;
+  padding: 5px 15px;
+  border-radius: 5px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+#level-text {
+  color: #0cf;
+  font-size: clamp(14px, 3vw, 20px);
+  margin: 0;
+}
+
+#timer {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: #0cf;
+  font-size: clamp(14px, 3vw, 20px);
+  z-index: 15;
+  pointer-events: none;
+}
+
+/* Game completion screen */
+#complete-overlay {
+  background-color: rgba(0, 0, 0, 0.85);
+  flex-direction: column;
+}
+
+#complete-content {
+  border: 2px solid #0cf;
+  background-color: rgba(0, 20, 40, 0.8);
+  border-radius: 10px;
+  padding: 30px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+#complete-title {
+  color: #0cf;
+  font-size: clamp(20px, 5vw, 28px);
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+#scores-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+#scores-table th {
+  color: #0cf;
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid rgba(0, 204, 255, 0.5);
+}
+
+#scores-table td {
+  color: white;
+  padding: 10px;
+}
+
+#scores-table tr.total-row {
+  border-top: 1px solid rgba(0, 204, 255, 0.5);
+}
+
+#scores-table tr.total-row td {
+  color: #0cf;
+  font-weight: bold;
+}
+
+#restart-button {
+  background: rgba(0, 20, 40, 0.5);
+  border: 2px solid #0cf;
+  color: #0cf;
+  padding: 12px 25px;
+  font-family: "Recursive", sans-serif;
+  font-size: clamp(14px, 3vw, 16px);
+  border-radius: 2px;
+  margin-top: 20px;
+  cursor: pointer;
+  width: 100%;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
+  position: relative;
+}
+
+#restart-button:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}
+
+#restart-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+}
+
+/* Corner decorations for restart button */
+#restart-button::before,
+#restart-button::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  z-index: 5;
+}
+
+#restart-button::before {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+#restart-button::after {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
+}
+
+/* Progress bar */
+#progress-container {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  max-width: 700px;
+  height: 24px;
+  /* Increased height */
+  background-color: rgba(0, 60, 80, 0.4);
+  border-radius: 4px;
+  /* Increased to match thicker bar */
+  overflow: visible;
+  /* Allow the securing text to be visible outside container */
+  z-index: 15;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background-color: rgba(0, 204, 255, 0.8);
+  border-radius: 4px;
+  /* Increased to match container */
+  position: relative;
+}
+
+#locking-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background-color: rgba(0, 255, 200, 0.8);
+  border-radius: 4px;
+  /* Increased to match container */
+  box-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+  opacity: 0;
+  transition: width 0s linear;
+}
+
+/* Securing text box */
+#securing-box {
+  position: absolute;
+  padding: 0;
+  color: white;
+  font-family: "Recursive", sans-serif;
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  left: 50%;
+  top: 50%;
+  /* Center vertically in progress bar */
+  transform: translate(-50%, -50%);
+  /* Center both horizontally and vertically */
+  z-index: 16;
+  text-align: center;
+  pointer-events: none;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 0 0 5px rgba(0, 204, 255, 0.8);
+  /* Enhanced text shadow for better visibility */
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Countdown overlay */
+#countdown-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 30;
+}
+
+#countdown-box {
+  text-align: center;
+}
+
+#level-countdown {
+  color: #0cf;
+  font-size: clamp(16px, 4vw, 24px);
+  margin-bottom: 20px;
+}
+
+#countdown-number {
+  width: clamp(80px, 20vw, 140px);
+  height: clamp(80px, 20vw, 140px);
+  background-color: rgba(0, 20, 40, 0.8);
+  border: 2px solid #0cf;
+  border-radius: 2px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(36px, 10vw, 60px);
+  color: #0cf;
+  position: relative;
+  margin: 0 auto;
+  text-shadow: 0 0 12px rgba(0, 204, 255, 0.8);
+  box-shadow: 0 0 25px rgba(0, 204, 255, 0.3);
+  letter-spacing: 2px;
+}
+
+#countdown-number::before,
+#countdown-number::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+}
+
+#countdown-number::before {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #0cf;
+  border-left: 2px solid #0cf;
+}
+
+#countdown-number::after {
+  bottom: -2px;
+  right: -2px;
+  border-bottom: 2px solid #0cf;
+  border-right: 2px solid #0cf;
+}
+
+/* In-game help button */
+#in-game-instructions-btn, #camera-permission-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: rgba(0, 20, 40, 0.7);
+  border: 2px solid #0cf;
+  color: #0cf;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: none; /* Hidden by default, will be shown during gameplay */
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+  text-shadow: 0 0 5px rgba(0, 204, 255, 0.5);
+  transition: all 0.2s ease;
+  pointer-events: auto; /* Ensure clicks are registered */
+}
+
+#in-game-instructions-btn:hover, #camera-permission-btn:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.5);
+}
+
+
+
+/* Button styling is defined above */
+
+/* Instructions overlay */
+#instructions-overlay {
+  background-color: rgba(0, 0, 0, 0.85);
+  z-index: 1000; /* Make sure it's above everything */
+}
+
+#instructions-content {
+  border: 2px solid #0cf;
+  background-color: rgba(0, 20, 40, 0.8);
+  border-radius: 2px;
+  padding: 30px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  position: relative;
+}
+
+#instructions-title {
+  color: #0cf;
+  font-size: clamp(20px, 5vw, 28px);
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+}
+
+#instructions-text {
+  color: white;
+  font-size: clamp(14px, 3vw, 16px);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+#instructions-text .attribution {
+  font-size: clamp(12px, 2vw, 14px);
+  opacity: 0.6;
+  text-align: right;
+  margin-top: 20px;
+}
+
+#instructions-text .attribution a {
+  color: #0cf;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+#instructions-text .attribution a:hover {
+  color: white;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.8);
+}
+
+#close-instructions-btn {
+  background: rgba(0, 20, 40, 0.5);
+  border: 2px solid #0cf;
+  color: #0cf;
+  padding: 12px 25px;
+  font-family: "Recursive", sans-serif;
+  font-size: clamp(14px, 3vw, 16px);
+  border-radius: 2px;
+  cursor: pointer;
+  width: 100%;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 15px rgba(0, 204, 255, 0.2);
+  position: relative;
+}
+
+#close-instructions-btn:hover {
+  background-color: rgba(0, 40, 60, 0.7);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  #mode-buttons {
+    flex-direction: column;
+  }
+
+  #canvas-container {
+    max-height: 80vh;
+  }
+
+  #level-indicator,
+  #timer {
+    font-size: 14px;
+    padding: 5px;
+  }
+  
+  #level-container {
+    gap: 10px; /* Less space between elements on mobile */
+  }
+  
+  #in-game-instructions-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+  }
+}
