@@ -709,6 +709,24 @@ canvas {
   margin-bottom: 20px;
 }
 
+#instructions-text .attribution {
+  font-size: clamp(12px, 2vw, 14px);
+  opacity: 0.6;
+  text-align: right;
+  margin-top: 20px;
+}
+
+#instructions-text .attribution a {
+  color: #0cf;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+#instructions-text .attribution a:hover {
+  color: white;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.8);
+}
+
 #close-instructions-btn {
   background: rgba(0, 20, 40, 0.5);
   border: 2px solid #0cf;
