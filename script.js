@@ -244,6 +244,7 @@ function createLevel(metricIds) {
   }
 }
 
+// TODO fix this order and such...
 // Standard mode levels - predefined progression
 let levels = [
   createLevel(["leftHandOverMouth"]), // Level 1: Cover mouth with left hand (Easy)
