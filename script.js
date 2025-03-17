@@ -150,6 +150,39 @@ const metricsDefinition = {
       return Math.min(1, Math.max(0, (metric.orientation + 0.8) / 1.6));
     },
   },
+  leftHandOverMouth: {
+    title: "Left Hand Over Mouth",
+    calculateScore: function (metric) {
+      if (!metric.calced) return null;
+      
+      // Using 2D distance between hand center and mouth
+      // Range is about 0-250 pixels
+      // < 50 is score 1 (covering mouth), > 250 is score 0 (far from mouth)
+      // Making it much more forgiving with wider range
+      if (metric.distance <= 50) {
+        return 1;
+      } else if (metric.distance >= 250) {
+        return 0;
+      } else {
+        return 1 - (metric.distance - 50) / 200;
+      }
+    },
+  },
+  rightHandOverMouth: {
+    title: "Right Hand Over Mouth",
+    calculateScore: function (metric) {
+      if (!metric.calced) return null;
+      
+      // Same calculation as left hand
+      if (metric.distance <= 50) {
+        return 1;
+      } else if (metric.distance >= 250) {
+        return 0;
+      } else {
+        return 1 - (metric.distance - 50) / 200;
+      }
+    },
+  },
 };
 
 let gameState = {
@@ -213,12 +246,14 @@ function createLevel(metricIds) {
 
 // Standard mode levels - predefined progression
 let levels = [
-  createLevel(["leftHandFist"]), // Level 1: Make a fist with left hand (Easy)
-  createLevel(["leftHandOverHead"]), // Level 2: Raise left hand above head (Easy)
-  createLevel(["leftHandPinch"]), // Level 3: Pinch left thumb and index finger (Easy)
-  createLevel(["mouthOpen", "wrists"]), // Level 4: Open mouth and bring wrists together (Medium)
-  createLevel(["leftHandBack", "rightHandBack"]), // Level 5: Show the back of both hands (Medium)
-  createLevel(["leftHandOverHead", "mouthOpen", "wrists"]), // Level 6: Triple combo (Hard)
+  createLevel(["leftHandOverMouth"]), // Level 1: Cover mouth with left hand (Easy)
+  createLevel(["leftHandFist"]), // Level 2: Make a fist with left hand (Easy)
+  createLevel(["leftHandOverHead"]), // Level 3: Raise left hand above head (Easy)
+  createLevel(["leftHandPinch"]), // Level 4: Pinch left thumb and index finger (Easy)
+  createLevel(["mouthOpen", "wrists"]), // Level 5: Open mouth and bring wrists together (Medium)
+  createLevel(["leftHandBack", "rightHandBack"]), // Level 6: Show the back of both hands (Medium)
+  createLevel(["rightHandOverMouth", "leftHandFist"]), // Level 7: Cover mouth with right hand while making left fist (Hard)
+  createLevel(["leftHandOverHead", "mouthOpen", "wrists"]), // Level 8: Triple combo (Hard)
 ];
 
 // Available metrics for endless mode with hints
@@ -277,6 +312,16 @@ const availableMetrics = [
     id: "rightHandFist",
     title: "Make a fist with right hand",
     hint: "Try closing your hand",
+  },
+  {
+    id: "leftHandOverMouth",
+    title: "Cover your mouth with left hand",
+    hint: "Try bringing your hand to your face",
+  },
+  {
+    id: "rightHandOverMouth",
+    title: "Cover your mouth with right hand",
+    hint: "Try bringing your hand to your face",
   },
 ];
 
@@ -650,6 +695,43 @@ function computeMetrics() {
     if (face.lips) {
       metrics.mouthOpen.calced = true;
       metrics.mouthOpen.ratio = (face.lips?.height / face.lips?.width) * 100;
+      
+      // Calculate hand over mouth metrics
+      // For simplicity, using 2D distance between hand center and mouth center
+      const mouthCenter = { 
+        x: face.lips.centerX, 
+        y: face.lips.centerY 
+      };
+      
+      // Check if hands are detected and calculate distances to mouth
+      if (hands) {
+        for (let i = 0; i < hands.length; i++) {
+          const hand = hands[i];
+          
+          if (hand.confidence > 0.8) {
+            // Use the middle finger base (knuckle) as hand center reference point
+            const middleKnuckle = hand?.middle_finger_mcp;
+            
+            if (middleKnuckle) {
+              const handPoint = { 
+                x: middleKnuckle.x, 
+                y: middleKnuckle.y 
+              };
+              
+              // Calculate 2D distance between hand center and mouth
+              const distance = calculate2DDistance(handPoint, mouthCenter);
+              
+              if (hand.handedness === "Left") {
+                metrics.leftHandOverMouth.calced = true;
+                metrics.leftHandOverMouth.distance = distance;
+              } else if (hand.handedness === "Right") {
+                metrics.rightHandOverMouth.calced = true;
+                metrics.rightHandOverMouth.distance = distance;
+              }
+            }
+          }
+        }
+      }
     }
 
     // TODO note this doesn't really work yet. rotating the head screws it up dramatically,
