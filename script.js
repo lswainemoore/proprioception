@@ -41,6 +41,38 @@ const metricsDefinition = {
       }
     },
   },
+  leftHandFist: {
+    title: "Left Hand Fist",
+    calculateScore: function (metric) {
+      if (!metric.calced) return null;
+      
+      // Average finger-to-palm distance is small when fist is closed
+      // Range is roughly 9-15 (smaller = fist)
+      // < 9 is score 1 (fist), > 15 is score 0 (open hand), linear in between
+      if (metric.avgDistance <= 9) {
+        return 1;
+      } else if (metric.avgDistance >= 15) {
+        return 0;
+      } else {
+        return 1 - (metric.avgDistance - 9) / 6;
+      }
+    },
+  },
+  rightHandFist: {
+    title: "Right Hand Fist",
+    calculateScore: function (metric) {
+      if (!metric.calced) return null;
+      
+      // Same calculation as left hand
+      if (metric.avgDistance <= 9) {
+        return 1;
+      } else if (metric.avgDistance >= 15) {
+        return 0;
+      } else {
+        return 1 - (metric.avgDistance - 9) / 6;
+      }
+    },
+  },
   wrists: {
     title: "Wrists",
     calculateScore: function (metric) {
@@ -181,11 +213,12 @@ function createLevel(metricIds) {
 
 // Standard mode levels - predefined progression
 let levels = [
-  createLevel(["leftHandOverHead"]), // Level 1: Raise left hand above head (Easy)
-  createLevel(["leftHandPinch"]), // Level 2: Pinch left thumb and index finger (Easy)
-  createLevel(["mouthOpen", "wrists"]), // Level 3: Open mouth and bring wrists together (Medium)
-  createLevel(["leftHandBack", "rightHandBack"]), // Level 4: Show the back of both hands (Medium)
-  createLevel(["leftHandOverHead", "mouthOpen", "wrists"]), // Level 5: Triple combo (Hard)
+  createLevel(["leftHandFist"]), // Level 1: Make a fist with left hand (Easy)
+  createLevel(["leftHandOverHead"]), // Level 2: Raise left hand above head (Easy)
+  createLevel(["leftHandPinch"]), // Level 3: Pinch left thumb and index finger (Easy)
+  createLevel(["mouthOpen", "wrists"]), // Level 4: Open mouth and bring wrists together (Medium)
+  createLevel(["leftHandBack", "rightHandBack"]), // Level 5: Show the back of both hands (Medium)
+  createLevel(["leftHandOverHead", "mouthOpen", "wrists"]), // Level 6: Triple combo (Hard)
 ];
 
 // Available metrics for endless mode with hints
@@ -234,7 +267,17 @@ const availableMetrics = [
     id: "rightHandBack",
     title: "Show back of right hand",
     hint: "Experiment with your right hand",
-},
+  },
+  {
+    id: "leftHandFist",
+    title: "Make a fist with left hand",
+    hint: "Try closing your hand",
+  },
+  {
+    id: "rightHandFist",
+    title: "Make a fist with right hand",
+    hint: "Try closing your hand",
+  },
 ];
 
 // Generate all possible metric combinations for endless mode
@@ -438,6 +481,9 @@ function computeMetrics() {
       const hand = hands[i];
       const thumbTip = hand?.thumb_tip;
       const indexTip = hand?.index_finger_tip;
+      const middleTip = hand?.middle_finger_tip;
+      const ringTip = hand?.ring_finger_tip;
+      const pinkyTip = hand?.pinky_finger_tip;
 
       // We need these points for hand orientation calculation
       const wrist = hand?.wrist;
@@ -460,6 +506,41 @@ function computeMetrics() {
             thumbTip,
             indexTip
           );
+        }
+      }
+      
+      // Calculate fist metric - average distance from fingertips to palm center
+      if (hand.confidence > 0.9 && wrist) {
+        // Get all fingertips
+        const fingertips = [
+          thumbTip,
+          indexTip,
+          middleTip,
+          ringTip,
+          pinkyTip
+        ];
+        
+        // Calculate average distance from fingertips to wrist
+        let totalDistance = 0;
+        let validFingers = 0;
+        
+        for (const fingertip of fingertips) {
+          if (fingertip) {
+            totalDistance += calculateHand3DDistance(fingertip, wrist);
+            validFingers++;
+          }
+        }
+        
+        const avgDistance = validFingers > 0 ? totalDistance / validFingers : null;
+        
+        if (avgDistance !== null) {
+          if (hand.handedness === "Left") {
+            metrics.leftHandFist.calced = true;
+            metrics.leftHandFist.avgDistance = avgDistance;
+          } else if (hand.handedness === "Right") {
+            metrics.rightHandFist.calced = true;
+            metrics.rightHandFist.avgDistance = avgDistance;
+          }
         }
       }
 
@@ -671,6 +752,9 @@ function drawAllMetrics(metrics) {
       }
       if (metric.orientation != null) {
         metricStr += "Orient: " + metric.orientation.toFixed(2) + "; ";
+      }
+      if (metric.avgDistance != null) {
+        metricStr += "Avg Dist: " + metric.avgDistance.toFixed(2) + "; ";
       }
       if (metric.score != null) {
         metricStr += "Score: " + metric.score.toFixed(2);
