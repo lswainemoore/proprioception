@@ -325,7 +325,91 @@ const availableMetrics = [
   },
 ];
 
-// Generate all possible metric combinations for endless mode
+// Define which metrics are incompatible with each other
+const metricIncompatibilities = {
+  // Left hand conflicts
+  "leftHandFist": ["leftHandPinch", "leftHandBack"],
+  "leftHandPinch": ["leftHandFist", "leftHandOverMouth"],
+  "leftHandOverHead": ["leftHandOverMouth"],
+  "leftHandOverMouth": ["leftHandPinch", "leftHandOverHead", "mouthOpen", "rightHandOverMouth"],
+  "leftHandBack": ["leftHandFist", "leftHandPinch", "leftHandOverMouth"],
+  
+  // Right hand conflicts
+  "rightHandFist": ["rightHandPinch", "rightHandOverMouth"],
+  "rightHandPinch": ["rightHandFist", "rightHandOverMouth"],
+  "rightHandOverHead": ["rightHandOverMouth"],
+  "rightHandOverMouth": ["rightHandPinch", "rightHandOverHead", "mouthOpen", "leftHandOverMouth"],
+  "rightHandBack": ["rightHandFist", "rightHandPinch", "rightHandOverMouth"],
+  
+  // Mouth conflicts
+  "mouthOpen": ["leftHandOverMouth", "rightHandOverMouth"],
+};
+
+// Function to check if two metrics are compatible
+function areMetricsCompatible(metricA, metricB) {
+  // Check if either metric conflicts with the other
+  if (metricIncompatibilities[metricA] && metricIncompatibilities[metricA].includes(metricB)) {
+    return false;
+  }
+  if (metricIncompatibilities[metricB] && metricIncompatibilities[metricB].includes(metricA)) {
+    return false;
+  }
+  return true;
+}
+
+// Function to check if a set of metrics is compatible
+function isCompatibleMetricSet(metricIds) {
+  for (let i = 0; i < metricIds.length; i++) {
+    for (let j = i + 1; j < metricIds.length; j++) {
+      if (!areMetricsCompatible(metricIds[i], metricIds[j])) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+// Function to generate a set of compatible metrics
+function generateCompatibleMetricSet(count, availableMetricsList) {
+  const selectedMetrics = [];
+  const availableIds = availableMetricsList.map(m => m.id);
+  
+  // Start with a random metric
+  const firstMetricIndex = Math.floor(Math.random() * availableIds.length);
+  selectedMetrics.push(availableIds[firstMetricIndex]);
+  
+  // Try to add more metrics that are compatible with all existing ones
+  let attempts = 0;
+  const maxAttempts = 50; // Prevent infinite loops
+  
+  while (selectedMetrics.length < count && attempts < maxAttempts) {
+    attempts++;
+    
+    // Select a random metric from available ones
+    const randomIndex = Math.floor(Math.random() * availableIds.length);
+    const candidateMetricId = availableIds[randomIndex];
+    
+    // Skip if already selected
+    if (selectedMetrics.includes(candidateMetricId)) continue;
+    
+    // Check compatibility with all current selections
+    let isCompatible = true;
+    for (const selectedMetric of selectedMetrics) {
+      if (!areMetricsCompatible(selectedMetric, candidateMetricId)) {
+        isCompatible = false;
+        break;
+      }
+    }
+    
+    if (isCompatible) {
+      selectedMetrics.push(candidateMetricId);
+    }
+  }
+  
+  return selectedMetrics;
+}
+
+// Generate all possible compatible metric combinations for endless mode
 function generateAllEndlessLevels() {
   const allLevels = [];
 
@@ -335,64 +419,83 @@ function generateAllEndlessLevels() {
     allLevels.push(createLevel([metric.id]));
   }
 
-  // Then, add all possible combinations of two metrics
+  // Then, add compatible combinations of two metrics
   for (let i = 0; i < availableMetrics.length; i++) {
     for (let j = i + 1; j < availableMetrics.length; j++) {
       const metric1 = availableMetrics[i];
       const metric2 = availableMetrics[j];
-      allLevels.push(createLevel([metric1.id, metric2.id]));
+      
+      // Only add if metrics are compatible
+      if (areMetricsCompatible(metric1.id, metric2.id)) {
+        allLevels.push(createLevel([metric1.id, metric2.id]));
+      }
     }
   }
+  
+  // Optionally, add compatible combinations of three metrics
+  // This is more intensive, so we can be selective
+  const threeMetricCombos = [];
+  
+  for (let i = 0; i < availableMetrics.length; i++) {
+    for (let j = i + 1; j < availableMetrics.length; j++) {
+      for (let k = j + 1; k < availableMetrics.length; k++) {
+        const metricIds = [
+          availableMetrics[i].id,
+          availableMetrics[j].id,
+          availableMetrics[k].id
+        ];
+        
+        // Check if this set of three metrics is compatible
+        if (isCompatibleMetricSet(metricIds)) {
+          threeMetricCombos.push(createLevel(metricIds));
+          
+          // Limit to a reasonable number of combinations
+          if (threeMetricCombos.length >= 15) break;
+        }
+      }
+      if (threeMetricCombos.length >= 15) break;
+    }
+    if (threeMetricCombos.length >= 15) break;
+  }
+  
+  // Add a selection of three-metric combinations
+  allLevels.push(...threeMetricCombos);
 
+  console.log(`Generated ${allLevels.length} possible levels (${allLevels.filter(l => l.metricIds.length === 1).length} single, ${allLevels.filter(l => l.metricIds.length === 2).length} double, ${allLevels.filter(l => l.metricIds.length === 3).length} triple)`);
+  
   return allLevels;
 }
 
 // Get next endless level based on game state
 function getNextEndlessLevel() {
-  // If there are no endless levels generated yet, create them
-  if (gameState.endlessLevels.length === 0) {
-    gameState.endlessLevels = generateAllEndlessLevels();
+  // Choose level complexity based on current level
+  let metricCount = 1;
+  if (gameState.level > 3 && gameState.level <= 6) {
+    metricCount = 2;
+  } else if (gameState.level > 6) {
+    metricCount = Math.min(3, 1 + Math.floor(Math.random() * 2)); // 2 or 3 metrics
   }
-
-  let levelIndex;
-
-  if (gameState.level <= 3) {
-    // First three levels should be single metrics
-    const unusedSingleLevels = gameState.endlessLevels
-      .map((level, index) => ({ level, index }))
-      .filter((item) => item.level.metricIds.length === 1)
-      .filter(
-        (item) => !gameState.usedEndlessLevelIndices.includes(item.index)
-      );
-
-    if (unusedSingleLevels.length === 0) {
-      // This shouldn't happen in the first 3 rounds, but just in case
-      return null;
-    }
-
-    const randomIndex = Math.floor(Math.random() * unusedSingleLevels.length);
-    levelIndex = unusedSingleLevels[randomIndex].index;
-  } else {
-    // After round 3, use any remaining single metrics or double combinations
-    const unusedLevels = gameState.endlessLevels
-      .map((level, index) => ({ level, index }))
-      .filter(
-        (item) => !gameState.usedEndlessLevelIndices.includes(item.index)
-      );
-
-    if (unusedLevels.length === 0) {
-      // All levels have been used, end the game
-      return null;
-    }
-
-    const randomIndex = Math.floor(Math.random() * unusedLevels.length);
-    levelIndex = unusedLevels[randomIndex].index;
+  
+  // Generate compatible metrics
+  const metricIds = generateCompatibleMetricSet(metricCount, availableMetrics);
+  
+  // If we couldn't generate enough compatible metrics, reduce complexity
+  if (metricIds.length < metricCount) {
+    console.log(`Couldn't generate level with ${metricCount} metrics, got ${metricIds.length} compatible metrics instead.`);
   }
-
-  // Mark this level as used
-  gameState.usedEndlessLevelIndices.push(levelIndex);
-
-  return gameState.endlessLevels[levelIndex];
+  
+  // If no metrics were found, something went wrong - default to a simple level
+  if (metricIds.length === 0) {
+    return createLevel(["leftHandOverHead"]);
+  }
+  
+  // Create level with these metrics
+  const level = createLevel(metricIds);
+  
+  // For debugging
+  console.log(`Generated level with metrics: ${metricIds.join(", ")}`);
+  
+  return level;
 }
 
 function preload() {
