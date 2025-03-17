@@ -315,19 +315,13 @@ function preload() {
   faceMesh = ml5.faceMesh({ flipped: true, refineLandmarks: true });
 }
 
+// Flag to track camera permission status
+let cameraPermissionGranted = false;
+
 function setup() {
   // Just create the canvas at the original fixed size - this is safer
   const canvas = createCanvas(640, 480);
   canvas.parent("canvas-container");
-
-  // Create video and hide it
-  video = createCapture(VIDEO, { flipped: true });
-  video.size(640, 480); // Keep original size for ML processing
-  video.hide();
-
-  handPose.detectStart(video, gotHands);
-  bodyPose.detectStart(video, gotBodies);
-  faceMesh.detectStart(video, gotFaces);
 
   // Set text to bold by default
   textStyle(BOLD);
@@ -335,7 +329,81 @@ function setup() {
   // Add window resize listener to update canvas size
   window.addEventListener('resize', windowResized);
 
-  resetGame();
+  // Check for camera permissions
+  checkCameraPermission();
+}
+
+// Function to check if camera permission is granted
+async function checkCameraPermission() {
+  try {
+    // Try to access the camera
+    video = createCapture(VIDEO, { flipped: true });
+    video.size(640, 480);
+    video.hide();
+    
+    // Start the detection models
+    handPose.detectStart(video, gotHands);
+    bodyPose.detectStart(video, gotBodies);
+    faceMesh.detectStart(video, gotFaces);
+    
+    cameraPermissionGranted = true;
+    resetGame();
+  } catch (error) {
+    console.error("Camera permission denied:", error);
+    cameraPermissionGranted = false;
+    initializeDOMElements(); // Make sure DOM elements are initialized
+    
+    // Show error overlay with camera error content after a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      if (domElements.trackingError) domElements.trackingError.style.display = "none";
+      if (domElements.cameraError) domElements.cameraError.style.display = "block";
+      showOverlay("errorOverlay");
+      hideOverlay("modeSelectionOverlay");
+    }, 100);
+  }
+}
+
+// Function to request camera permission
+async function requestCameraPermission() {
+  try {
+    // First stop any existing detection to clean up
+    if (handPose) handPose.detectStop();
+    if (bodyPose) bodyPose.detectStop();
+    if (faceMesh) faceMesh.detectStop();
+    
+    // Remove old video if it exists
+    if (video) {
+      video.remove();
+    }
+    
+    // Create new video capture
+    video = createCapture(VIDEO, { flipped: true });
+    video.size(640, 480);
+    video.hide();
+    
+    // Wait a brief moment for video to initialize
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Create new detection models
+    handPose = ml5.handPose({ flipped: true });
+    bodyPose = ml5.bodyPose("BlazePose", { flipped: true });
+    faceMesh = ml5.faceMesh({ flipped: true, refineLandmarks: true });
+    
+    // Start the detection models
+    handPose.detectStart(video, gotHands);
+    bodyPose.detectStart(video, gotBodies);
+    faceMesh.detectStart(video, gotFaces);
+    
+    // If we get here, we're successful
+    cameraPermissionGranted = true;
+    
+    // Hide the error overlay
+    if (domElements.errorOverlay) domElements.errorOverlay.style.opacity = "0";
+  } catch (error) {
+    console.error("Camera permission denied again:", error);
+    cameraPermissionGranted = false;
+    // The draw loop will continue to show the error message
+  }
 }
 
 // Handle window resize events - but keep fixed dimensions
@@ -682,6 +750,16 @@ let domElements = {
   // In-game Help
   inGameInstructionsBtn: null,
   
+  // Camera Permission
+  requestPermissionBtn: null,
+  
+  // Error Display
+  errorBox: null,
+  trackingError: null,
+  cameraError: null,
+  errorMessage: null,
+  cameraErrorMessage: null,
+  
   // Instructions
   closeInstructionsBtn: null,
 
@@ -695,7 +773,6 @@ let domElements = {
   restartButton: null,
 
   // Other
-  errorMessage: null,
   hintText: null,
 };
 
@@ -729,6 +806,16 @@ function initializeDOMElements() {
   // In-game Help
   domElements.inGameInstructionsBtn = document.getElementById("in-game-instructions-btn");
   
+  // Error Display
+  domElements.errorBox = document.getElementById("error-box");
+  domElements.trackingError = document.getElementById("tracking-error");
+  domElements.cameraError = document.getElementById("camera-error");
+  domElements.errorMessage = document.getElementById("error-message");
+  domElements.cameraErrorMessage = document.getElementById("camera-error-message");
+  
+  // Camera Permission
+  domElements.requestPermissionBtn = document.getElementById("request-permission-btn");
+  
   // Instructions
   domElements.closeInstructionsBtn = document.getElementById("close-instructions-btn");
 
@@ -742,7 +829,6 @@ function initializeDOMElements() {
   domElements.restartButton = document.getElementById("restart-button");
 
   // Other
-  domElements.errorMessage = document.getElementById("error-message");
   domElements.hintText = document.getElementById("hint-text");
 
   // Initialize UI elements to be hidden by default
@@ -777,6 +863,11 @@ function initializeDOMElements() {
   domElements.closeInstructionsBtn.addEventListener("click", () => {
     hideOverlay("instructionsOverlay");
   });
+  
+  // Camera permission button
+  domElements.requestPermissionBtn.addEventListener("click", () => {
+    requestCameraPermission();
+  });
 
   // Add key press event listener to document
   document.addEventListener("keydown", keyPressed);
@@ -786,7 +877,12 @@ function initializeDOMElements() {
 function showOverlay(overlay) {
   if (domElements[overlay]) {
     domElements[overlay].style.opacity = "1";
-    domElements[overlay].style.pointerEvents = "auto";
+    
+    // For error overlay, keep pointer-events as none to let buttons underneath work
+    // Only the request-permission-btn inside it will have pointer-events: auto
+    if (overlay !== "errorOverlay") {
+      domElements[overlay].style.pointerEvents = "auto";
+    }
   }
 }
 
@@ -924,14 +1020,35 @@ function draw() {
 
   // Clear with dark background
   background(20, 30, 40);
-
-  // Draw video with a slight processing effect
-  push();
-  tint(200, 220, 255, 240); // Slightly blue tint
   
-  // Draw the video to fill the entire canvas
-  image(video, 0, 0, width, height);
-  pop();
+  // Check camera permission status in the draw loop
+  if (video && video.elt) {
+    if (video.elt.readyState === 0 && !video.elt.srcObject) {
+      // Camera not available or permission denied
+      cameraPermissionGranted = false;
+      
+      // Show camera error, but don't block normal game flow
+      if (gameState.playing || gameState.started) {
+        if (domElements.trackingError) domElements.trackingError.style.display = "none";
+        if (domElements.cameraError) domElements.cameraError.style.display = "block";
+        // Just make error overlay visible without changing pointer-events
+        if (domElements.errorOverlay) domElements.errorOverlay.style.opacity = "1";
+      }
+    } else {
+      // Camera appears to be available
+      cameraPermissionGranted = true;
+    }
+  }
+
+  // Draw video with a slight processing effect if we have camera permission
+  if (cameraPermissionGranted && video) {
+    push();
+    tint(200, 220, 255, 240); // Slightly blue tint
+    
+    // Draw the video to fill the entire canvas
+    image(video, 0, 0, width, height);
+    pop();
+  }
 
   // Add sci-fi grid overlay
   drawScienceOverlay();
@@ -1125,7 +1242,9 @@ function draw() {
       if (domElements.progressContainer)
         domElements.progressContainer.style.display = "block";
 
-      // Hide error overlay
+      // Hide error overlay or switch to tracking error content
+      if (domElements.trackingError) domElements.trackingError.style.display = "block";
+      if (domElements.cameraError) domElements.cameraError.style.display = "none";
       hideOverlay("errorOverlay");
 
       // Handle locking in animation
@@ -1148,7 +1267,16 @@ function draw() {
         hideOverlay("hintOverlay");
       }
     } else {
-      // Show error message for missing body parts
+      // Show appropriate error message
+      if (cameraPermissionGranted) {
+        // Only show tracking error if we have camera permission
+        if (domElements.trackingError) domElements.trackingError.style.display = "block";
+        if (domElements.cameraError) domElements.cameraError.style.display = "none";
+      } else {
+        // Show camera error if we don't have permission
+        if (domElements.trackingError) domElements.trackingError.style.display = "none";
+        if (domElements.cameraError) domElements.cameraError.style.display = "block";
+      }
       showOverlay("errorOverlay");
     }
 
@@ -1506,17 +1634,19 @@ function resetGame() {
   if (domElements.progressContainer)
     domElements.progressContainer.style.display = "none";
     
-  // Hide help button
-  document.getElementById("in-game-instructions-btn").style.display = "none";
+  // Hide all buttons
+  if (domElements.inGameInstructionsBtn)
+    domElements.inGameInstructionsBtn.style.display = "none";
     
   // Reset progress bar
   updateProgressBar(0);
 
-  // Show mode selection
+  // Show mode selection if we have camera permission, otherwise show camera error
   hideOverlay("countdownOverlay");
-  hideOverlay("errorOverlay");
   hideOverlay("hintOverlay");
   hideOverlay("completeOverlay");
+  
+  // Always show mode selection - camera error will be shown by draw loop if needed
   showOverlay("modeSelectionOverlay");
 }
 
@@ -1555,8 +1685,12 @@ function endGame() {
   if (domElements.progressContainer)
     domElements.progressContainer.style.display = "none";
     
-  // Hide help button
-  document.getElementById("in-game-instructions-btn").style.display = "none";
+  // Hide all buttons
+  if (domElements.inGameInstructionsBtn)
+    domElements.inGameInstructionsBtn.style.display = "none";
+  
+  // Hide error overlay
+  hideOverlay("errorOverlay");
 }
 
 function startLevel() {
@@ -1577,7 +1711,8 @@ function startLevel() {
     domElements.progressContainer.style.display = "block";
     
   // Show help button during gameplay
-  document.getElementById("in-game-instructions-btn").style.display = "flex";
+  if (domElements.inGameInstructionsBtn)
+    domElements.inGameInstructionsBtn.style.display = "flex";
 
   // Reset progress indicators
   updateProgressBar(0);
@@ -1586,9 +1721,14 @@ function startLevel() {
   // Hide overlays
   hideOverlay("countdownOverlay");
   hideOverlay("hintOverlay");
+  
+  // We'll let the draw loop handle showing errors for camera permissions
 }
 
 function startCountdown() {
+  // Always start countdown, even without camera permission
+  // We'll show the error overlay but not block game flow
+  
   gameState.countdown = true;
   gameState.countdownStartTime = millis();
 
@@ -1604,8 +1744,9 @@ function startCountdown() {
   if (domElements.timer) domElements.timer.style.display = "none";
   if (domElements.progressContainer) domElements.progressContainer.style.display = "none";
   
-  // Hide help button during countdown
-  document.getElementById("in-game-instructions-btn").style.display = "none";
+  // Hide all buttons during countdown
+  if (domElements.inGameInstructionsBtn)
+    domElements.inGameInstructionsBtn.style.display = "none";
 
   // Get difficulty for level display
   let difficulty = "Easy";
@@ -1661,7 +1802,7 @@ function nextLevel() {
 
 function restartGame() {
   resetGame();
-  // Go back to the menu screen
+  // Just go back to the menu screen, camera status handled in draw loop
 }
 
 function keyPressed() {
